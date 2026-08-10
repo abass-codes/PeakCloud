@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/abass-codes/peakcloud/internal/auth"
 	"github.com/abass-codes/peakcloud/internal/cache"
 	"github.com/abass-codes/peakcloud/internal/config"
 	"github.com/abass-codes/peakcloud/internal/database"
@@ -56,7 +57,26 @@ func main() {
 	healthService := health.NewService(db, redisClient)
 	healthHandler := health.NewHandler(healthService)
 
-	router := httpserver.NewRouter(healthHandler)
+	authRepository := auth.NewRepository(db)
+	authService := auth.NewService(
+		authRepository,
+		cfg.SessionTTL,
+	)
+
+	authHandler := auth.NewHandler(
+		authService,
+		cfg.SessionCookieName,
+		cfg.SessionTTL,
+		cfg.SessionSecure,
+	)
+
+	router := httpserver.NewRouter(
+		healthHandler,
+		authHandler,
+		authService,
+		cfg.SessionCookieName,
+		cfg.WebURL,
+	)
 
 	server := &http.Server{
 		Addr:              cfg.APIHost + ":" + cfg.APIPort,
@@ -94,14 +114,23 @@ func main() {
 		}
 
 	case sig := <-shutdown:
-		log.Info("shutdown signal received", zap.String("signal", sig.String()))
+		log.Info(
+			"shutdown signal received",
+			zap.String("signal", sig.String()),
+		)
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(
+		context.Background(),
+		10*time.Second,
+	)
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Error("graceful shutdown failed", zap.Error(err))
+		log.Error(
+			"graceful shutdown failed",
+			zap.Error(err),
+		)
 	}
 
 	log.Info("PeakCloud API stopped")

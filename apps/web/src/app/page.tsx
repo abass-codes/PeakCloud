@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
@@ -14,10 +16,20 @@ export default function Home() {
           A production-grade cloud storage and file synchronization platform.
         </p>
 
-        <div className="mt-10 flex justify-center">
-          <span className="rounded-full border border-zinc-800 bg-zinc-900 px-5 py-2 text-sm text-zinc-300">
-            Platform foundation online
-          </span>
+        <div className="mt-10 flex flex-wrap justify-center gap-4">
+          <Link
+            href="/register"
+            className="rounded-xl bg-white px-6 py-3 font-medium text-black transition hover:bg-zinc-200"
+          >
+            Create account
+          </Link>
+
+          <Link
+            href="/login"
+            className="rounded-xl border border-zinc-800 px-6 py-3 font-medium text-zinc-200 transition hover:bg-zinc-900"
+          >
+            Sign in
+          </Link>
         </div>
       </section>
     </main>

@@ -8,7 +8,7 @@ PeakCloud is under active development.
 
 Current milestone:
 
-**Feature 1 — Project Foundation & Repository Setup**
+**Feature 2 — User Authentication & Account System**
 
 ## Tech Stack
 
@@ -66,3 +66,25 @@ Health endpoint:
 ## Development Workflow
 
 PeakCloud is developed incrementally using GitHub Issues, feature branches, pull requests, automated CI, tests, Architecture Decision Records, semantic versioning, and production-focused documentation.
+
+## Authentication
+
+PeakCloud currently supports:
+
+- Account registration
+- Argon2id password hashing
+- Login
+- Server-side sessions
+- HttpOnly session cookies
+- Protected API routes
+- Session persistence
+- Logout
+- Authentication rate limiting
+
+Authentication API documentation is available in:
+
+`docs/api/authentication.md`
+
+Security details are documented in:
+
+`docs/security/authentication.md`
