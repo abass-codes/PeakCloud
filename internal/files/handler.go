@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/abass-codes/peakcloud/internal/auth"
 	"github.com/gin-gonic/gin"
@@ -346,4 +347,106 @@ func (h *Handler) Delete(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (h *Handler) Content(c *gin.Context) {
+	user, ok := auth.UserFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	file, object, err := h.service.Download(
+		c.Request.Context(),
+		c.Param("id"),
+		user.ID,
+	)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "unable to preview file",
+		})
+		return
+	}
+	defer object.Close()
+
+	preview := ClassifyPreview(
+		file.ContentType,
+		file.OriginalName,
+	)
+
+	if !preview.Previewable {
+		c.JSON(http.StatusUnsupportedMediaType, gin.H{
+			"error": "file type does not support preview",
+		})
+		return
+	}
+
+	if (preview.Kind == PreviewText || preview.Kind == PreviewCode) &&
+		file.SizeBytes > MaxTextPreviewBytes {
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{
+			"error": "text file is too large to preview",
+		})
+		return
+	}
+
+	c.Header("Content-Type", file.ContentType)
+	c.Header(
+		"Content-Disposition",
+		`inline; filename="`+sanitizeContentDispositionFilename(file.OriginalName)+`"`,
+	)
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Cache-Control", "private, no-store")
+
+	if _, err := io.Copy(c.Writer, object); err != nil {
+		return
+	}
+}
+
+func sanitizeContentDispositionFilename(name string) string {
+	name = strings.ReplaceAll(name, `\`, "_")
+	name = strings.ReplaceAll(name, `"`, "_")
+	name = strings.ReplaceAll(name, "\r", "_")
+	name = strings.ReplaceAll(name, "\n", "_")
+
+	return name
+}
+
+func (h *Handler) Preview(c *gin.Context) {
+	user, ok := auth.UserFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	file, err := h.service.Get(
+		c.Request.Context(),
+		c.Param("id"),
+		user.ID,
+	)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "unable to load file preview",
+		})
+		return
+	}
+
+	preview := ClassifyPreview(
+		file.ContentType,
+		file.OriginalName,
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"file":    file,
+		"preview": preview,
+	})
 }

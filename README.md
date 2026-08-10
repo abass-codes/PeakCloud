@@ -130,3 +130,20 @@ Current management capabilities include:
 - bulk file download as ZIP
 - account-isolated file and folder access
 - stable generated object-storage keys
+
+## File Preview
+
+PeakCloud supports authenticated in-browser previews for common file formats.
+
+Current preview capabilities include:
+
+- image preview
+- PDF preview
+- plain-text preview
+- source-code preview
+- browser-supported video playback
+- browser-supported audio playback
+- unsupported-format download fallback
+- owner-scoped preview authorization
+- private inline content streaming
+- text-preview size limits

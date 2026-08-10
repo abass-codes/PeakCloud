@@ -1,5 +1,7 @@
 "use client";
 
+import FilePreviewModal from "@/components/preview/FilePreviewModal";
+
 import {
   ChangeEvent,
   DragEvent,
@@ -47,8 +49,7 @@ export default function DriveManager() {
     files: [],
   });
 
-  const [currentFolderId, setCurrentFolderId] =
-    useState<string | undefined>();
+  const [currentFolderId, setCurrentFolderId] = useState<string | undefined>();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sortMode, setSortMode] = useState<SortMode>("name");
@@ -57,6 +58,7 @@ export default function DriveManager() {
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
+  const [previewFileId, setPreviewFileId] = useState<string | null>(null);
 
   const refresh = useCallback(async (folderId?: string) => {
     try {
@@ -65,9 +67,7 @@ export default function DriveManager() {
       setDrive(result);
       setSelected(new Set());
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to load drive",
-      );
+      setError(err instanceof Error ? err.message : "Unable to load drive");
     } finally {
       setLoading(false);
     }
@@ -85,11 +85,7 @@ export default function DriveManager() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Unable to load drive",
-          );
+          setError(err instanceof Error ? err.message : "Unable to load drive");
         }
       } finally {
         if (!cancelled) {
@@ -109,14 +105,11 @@ export default function DriveManager() {
     const query = filter.trim().toLowerCase();
 
     return [...drive.folders]
-      .filter((folder) =>
-        folder.name.toLowerCase().includes(query),
-      )
+      .filter((folder) => folder.name.toLowerCase().includes(query))
       .sort((a, b) => {
         if (sortMode === "modified") {
           return (
-            new Date(b.updated_at).getTime() -
-            new Date(a.updated_at).getTime()
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
           );
         }
 
@@ -128,14 +121,11 @@ export default function DriveManager() {
     const query = filter.trim().toLowerCase();
 
     return [...drive.files]
-      .filter((file) =>
-        file.name.toLowerCase().includes(query),
-      )
+      .filter((file) => file.name.toLowerCase().includes(query))
       .sort((a, b) => {
         if (sortMode === "modified") {
           return (
-            new Date(b.updated_at).getTime() -
-            new Date(a.updated_at).getTime()
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
           );
         }
 
@@ -195,9 +185,7 @@ export default function DriveManager() {
       await createFolder(name, currentFolderId);
       await refresh(currentFolderId);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to create folder",
-      );
+      setError(err instanceof Error ? err.message : "Unable to create folder");
     }
   }
 
@@ -209,17 +197,13 @@ export default function DriveManager() {
       await uploadFile(file, currentFolderId);
       await refresh(currentFolderId);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to upload file",
-      );
+      setError(err instanceof Error ? err.message : "Unable to upload file");
     } finally {
       setUploading(false);
     }
   }
 
-  async function handleInput(
-    event: ChangeEvent<HTMLInputElement>,
-  ) {
+  async function handleInput(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
     if (file) {
@@ -251,9 +235,7 @@ export default function DriveManager() {
       await renameFolder(id, name);
       await refresh(currentFolderId);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to rename folder",
-      );
+      setError(err instanceof Error ? err.message : "Unable to rename folder");
     }
   }
 
@@ -268,9 +250,7 @@ export default function DriveManager() {
       await renameFile(file.id, name);
       await refresh(currentFolderId);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to rename file",
-      );
+      setError(err instanceof Error ? err.message : "Unable to rename file");
     }
   }
 
@@ -283,9 +263,7 @@ export default function DriveManager() {
       await deleteFolder(id);
       await refresh(currentFolderId);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to delete folder",
-      );
+      setError(err instanceof Error ? err.message : "Unable to delete folder");
     }
   }
 
@@ -298,9 +276,7 @@ export default function DriveManager() {
       await deleteFile(id);
       await refresh(currentFolderId);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to delete file",
-      );
+      setError(err instanceof Error ? err.message : "Unable to delete file");
     }
   }
 
@@ -309,9 +285,7 @@ export default function DriveManager() {
       await copyFile(file.id, currentFolderId);
       await refresh(currentFolderId);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to copy file",
-      );
+      setError(err instanceof Error ? err.message : "Unable to copy file");
     }
   }
 
@@ -329,9 +303,7 @@ export default function DriveManager() {
       await bulkDelete(items);
       await refresh(currentFolderId);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Bulk delete failed",
-      );
+      setError(err instanceof Error ? err.message : "Bulk delete failed");
     }
   }
 
@@ -348,9 +320,7 @@ export default function DriveManager() {
     try {
       await bulkDownload(fileIds);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Bulk download failed",
-      );
+      setError(err instanceof Error ? err.message : "Bulk download failed");
     }
   }
 
@@ -384,9 +354,7 @@ export default function DriveManager() {
 
         <select
           value={sortMode}
-          onChange={(event) =>
-            setSortMode(event.target.value as SortMode)
-          }
+          onChange={(event) => setSortMode(event.target.value as SortMode)}
           className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm"
         >
           <option value="name">Name</option>
@@ -420,9 +388,7 @@ export default function DriveManager() {
 
       {selected.size > 0 && (
         <div className="mt-5 flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
-          <span className="text-sm">
-            {selected.size} selected
-          </span>
+          <span className="text-sm">{selected.size} selected</span>
 
           <button
             type="button"
@@ -457,9 +423,7 @@ export default function DriveManager() {
         onDragLeave={() => setDragging(false)}
         onDrop={(event) => void handleDrop(event)}
         className={`mt-6 overflow-hidden rounded-xl border ${
-          dragging
-            ? "border-zinc-400 bg-zinc-900"
-            : "border-zinc-800"
+          dragging ? "border-zinc-400 bg-zinc-900" : "border-zinc-800"
         }`}
       >
         <div className="grid grid-cols-[40px_1fr_140px_140px_260px] border-b border-zinc-800 bg-zinc-900/40 px-4 py-3 text-xs uppercase tracking-wide text-zinc-500">
@@ -471,9 +435,7 @@ export default function DriveManager() {
         </div>
 
         {loading ? (
-          <div className="p-8 text-sm text-zinc-500">
-            Loading drive...
-          </div>
+          <div className="p-8 text-sm text-zinc-500">Loading drive...</div>
         ) : folders.length === 0 && files.length === 0 ? (
           <div className="p-12 text-center text-sm text-zinc-500">
             Drop a file here or create a folder.
@@ -509,10 +471,7 @@ export default function DriveManager() {
                     <button
                       type="button"
                       onClick={() =>
-                        void handleRenameFolder(
-                          folder.id,
-                          folder.name,
-                        )
+                        void handleRenameFolder(folder.id, folder.name)
                       }
                       className="text-zinc-400 hover:text-white"
                     >
@@ -521,9 +480,7 @@ export default function DriveManager() {
 
                     <button
                       type="button"
-                      onClick={() =>
-                        void handleDeleteFolder(folder.id)
-                      }
+                      onClick={() => void handleDeleteFolder(folder.id)}
                       className="text-red-400 hover:text-red-300"
                     >
                       Delete
@@ -547,9 +504,13 @@ export default function DriveManager() {
                     onChange={() => toggle("file", file.id)}
                   />
 
-                  <span className="truncate pr-4">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewFileId(file.id)}
+                    className="truncate pr-4 text-left hover:underline"
+                  >
                     📄 {file.name}
-                  </span>
+                  </button>
 
                   <span className="truncate text-zinc-500">
                     {file.content_type}
@@ -562,9 +523,7 @@ export default function DriveManager() {
                   <div className="flex gap-4">
                     <button
                       type="button"
-                      onClick={() =>
-                        void downloadFile(file.id, file.name)
-                      }
+                      onClick={() => void downloadFile(file.id, file.name)}
                       className="text-zinc-400 hover:text-white"
                     >
                       Download
@@ -588,9 +547,7 @@ export default function DriveManager() {
 
                     <button
                       type="button"
-                      onClick={() =>
-                        void handleDeleteFile(file.id)
-                      }
+                      onClick={() => void handleDeleteFile(file.id)}
                       className="text-red-400 hover:text-red-300"
                     >
                       Delete
@@ -602,6 +559,18 @@ export default function DriveManager() {
           </>
         )}
       </div>
+
+      <FilePreviewModal
+        fileId={previewFileId}
+        onClose={() => setPreviewFileId(null)}
+        onDownload={(fileId) => {
+          const file = drive.files.find((item) => item.id === fileId);
+
+          if (file) {
+            void downloadFile(file.id, file.name);
+          }
+        }}
+      />
     </section>
   );
 }

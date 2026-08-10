@@ -63,6 +63,8 @@ func NewRouter(
 		protected.GET("/files", fileHandler.List)
 		protected.GET("/files/:id", fileHandler.Get)
 		protected.GET("/files/:id/download", fileHandler.Download)
+		protected.GET("/files/:id/preview", fileHandler.Preview)
+		protected.GET("/files/:id/content", fileHandler.Content)
 		protected.PATCH("/files/:id/name", fileHandler.Rename)
 		protected.PATCH("/files/:id/location", fileHandler.Move)
 		protected.POST("/files/:id/copy", fileHandler.Copy)

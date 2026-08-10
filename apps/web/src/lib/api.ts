@@ -1,5 +1,4 @@
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export type User = {
   id: string;
@@ -40,10 +39,7 @@ export type BulkItem = {
   id: string;
 };
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     credentials: "include",
@@ -110,17 +106,12 @@ export async function getCurrentUser() {
 }
 
 export async function getDrive(folderId?: string) {
-  const query = folderId
-    ? `?folder_id=${encodeURIComponent(folderId)}`
-    : "";
+  const query = folderId ? `?folder_id=${encodeURIComponent(folderId)}` : "";
 
   return request<DriveContents>(`/api/v1/drive${query}`);
 }
 
-export async function createFolder(
-  name: string,
-  parentId?: string,
-) {
+export async function createFolder(name: string, parentId?: string) {
   const result = await request<{ folder: Folder }>("/api/v1/folders", {
     method: "POST",
     headers: {
@@ -150,10 +141,7 @@ export async function renameFolder(id: string, name: string) {
   return result.folder;
 }
 
-export async function moveFolder(
-  id: string,
-  parentId?: string,
-) {
+export async function moveFolder(id: string, parentId?: string) {
   const result = await request<{ folder: Folder }>(
     `/api/v1/folders/${id}/location`,
     {
@@ -176,10 +164,7 @@ export async function deleteFolder(id: string) {
   });
 }
 
-export async function uploadFile(
-  file: File,
-  folderId?: string,
-) {
+export async function uploadFile(file: File, folderId?: string) {
   const form = new FormData();
   form.append("file", file);
 
@@ -210,10 +195,7 @@ export async function renameFile(id: string, name: string) {
   return result.file;
 }
 
-export async function moveFile(
-  id: string,
-  folderId?: string,
-) {
+export async function moveFile(id: string, folderId?: string) {
   const result = await request<{ file: StoredFile }>(
     `/api/v1/files/${id}/location`,
     {
@@ -230,10 +212,7 @@ export async function moveFile(
   return result.file;
 }
 
-export async function copyFile(
-  id: string,
-  folderId?: string,
-) {
+export async function copyFile(id: string, folderId?: string) {
   const result = await request<{ file: StoredFile }>(
     `/api/v1/files/${id}/copy`,
     {
@@ -256,16 +235,10 @@ export async function deleteFile(id: string) {
   });
 }
 
-export async function downloadFile(
-  id: string,
-  filename: string,
-) {
-  const response = await fetch(
-    `${API_URL}/api/v1/files/${id}/download`,
-    {
-      credentials: "include",
-    },
-  );
+export async function downloadFile(id: string, filename: string) {
+  const response = await fetch(`${API_URL}/api/v1/files/${id}/download`, {
+    credentials: "include",
+  });
 
   if (!response.ok) {
     throw new Error("Unable to download file");
@@ -284,10 +257,7 @@ export async function downloadFile(
   URL.revokeObjectURL(url);
 }
 
-export async function bulkMove(
-  items: BulkItem[],
-  folderId?: string,
-) {
+export async function bulkMove(items: BulkItem[], folderId?: string) {
   return request<void>("/api/v1/drive/bulk/move", {
     method: "POST",
     headers: {
@@ -311,19 +281,16 @@ export async function bulkDelete(items: BulkItem[]) {
 }
 
 export async function bulkDownload(fileIds: string[]) {
-  const response = await fetch(
-    `${API_URL}/api/v1/drive/bulk/download`,
-    {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        file_ids: fileIds,
-      }),
+  const response = await fetch(`${API_URL}/api/v1/drive/bulk/download`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({
+      file_ids: fileIds,
+    }),
+  });
 
   if (!response.ok) {
     throw new Error("Unable to download selected files");
@@ -340,4 +307,46 @@ export async function bulkDownload(fileIds: string[]) {
   anchor.remove();
 
   URL.revokeObjectURL(url);
+}
+
+export type PreviewKind =
+  "image" | "pdf" | "text" | "code" | "video" | "audio" | "unsupported";
+
+export type FilePreviewInfo = {
+  kind: PreviewKind;
+  previewable: boolean;
+  inline: boolean;
+};
+
+export type FilePreviewResponse = {
+  file: StoredFile;
+  preview: FilePreviewInfo;
+};
+
+export async function getFilePreview(
+  fileId: string,
+): Promise<FilePreviewResponse> {
+  const response = await fetch(`${API_URL}/api/v1/files/${fileId}/preview`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to load file preview");
+  }
+
+  return response.json();
+}
+
+export async function getFilePreviewBlob(fileId: string): Promise<Blob> {
+  const response = await fetch(`${API_URL}/api/v1/files/${fileId}/content`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to load file content");
+  }
+
+  return response.blob();
 }
