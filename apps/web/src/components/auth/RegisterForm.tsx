@@ -21,11 +21,11 @@ export default function RegisterForm() {
     setLoading(true);
 
     try {
-      await register({
+      await register(
         email,
-        display_name: displayName,
+        displayName,
         password,
-      });
+      );
 
       router.push("/dashboard");
       router.refresh();

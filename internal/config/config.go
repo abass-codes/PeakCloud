@@ -28,6 +28,8 @@ type Config struct {
 	S3Bucket    string
 	S3UseSSL    bool
 
+	MaxUploadSize int64
+
 	SessionCookieName string
 	SessionTTL        time.Duration
 	SessionSecure     bool
@@ -44,6 +46,15 @@ func Load() (*Config, error) {
 	s3UseSSL, err := strconv.ParseBool(getEnv("S3_USE_SSL", "false"))
 	if err != nil {
 		return nil, fmt.Errorf("parse S3_USE_SSL: %w", err)
+	}
+
+	maxUploadMB, err := strconv.ParseInt(getEnv("MAX_UPLOAD_SIZE_MB", "100"), 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("parse MAX_UPLOAD_SIZE_MB: %w", err)
+	}
+
+	if maxUploadMB <= 0 {
+		return nil, fmt.Errorf("MAX_UPLOAD_SIZE_MB must be greater than zero")
 	}
 
 	sessionTTLHours, err := strconv.Atoi(getEnv("SESSION_TTL_HOURS", "168"))
@@ -79,6 +90,8 @@ func Load() (*Config, error) {
 		S3Bucket:    getEnv("S3_BUCKET", "peakcloud"),
 		S3UseSSL:    s3UseSSL,
 
+		MaxUploadSize: maxUploadMB * 1024 * 1024,
+
 		SessionCookieName: getEnv("SESSION_COOKIE_NAME", "peakcloud_session"),
 		SessionTTL:        time.Duration(sessionTTLHours) * time.Hour,
 		SessionSecure:     sessionSecure,
@@ -86,6 +99,14 @@ func Load() (*Config, error) {
 
 	if cfg.DatabaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL is required")
+	}
+
+	if cfg.S3AccessKey == "" {
+		return nil, fmt.Errorf("S3_ACCESS_KEY is required")
+	}
+
+	if cfg.S3SecretKey == "" {
+		return nil, fmt.Errorf("S3_SECRET_KEY is required")
 	}
 
 	return cfg, nil

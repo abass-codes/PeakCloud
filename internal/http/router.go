@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/abass-codes/peakcloud/internal/auth"
+	"github.com/abass-codes/peakcloud/internal/files"
 	"github.com/abass-codes/peakcloud/internal/health"
 	"github.com/abass-codes/peakcloud/internal/middleware"
 	"github.com/gin-contrib/cors"
@@ -13,6 +14,7 @@ import (
 func NewRouter(
 	healthHandler *health.Handler,
 	authHandler *auth.Handler,
+	fileHandler *files.Handler,
 	authService *auth.Service,
 	cookieName string,
 	webURL string,
@@ -24,7 +26,7 @@ func NewRouter(
 
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{webURL},
-		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
@@ -52,6 +54,12 @@ func NewRouter(
 	protected.Use(auth.Middleware(authService, cookieName))
 	{
 		protected.GET("/me", authHandler.Me)
+
+		protected.POST("/files", fileHandler.Upload)
+		protected.GET("/files", fileHandler.List)
+		protected.GET("/files/:id", fileHandler.Get)
+		protected.GET("/files/:id/download", fileHandler.Download)
+		protected.DELETE("/files/:id", fileHandler.Delete)
 	}
 
 	return router

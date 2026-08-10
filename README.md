@@ -88,3 +88,22 @@ Authentication API documentation is available in:
 Security details are documented in:
 
 `docs/security/authentication.md`
+
+## File Storage
+
+PeakCloud supports authenticated private file storage backed by S3-compatible object storage.
+
+Current file capabilities include:
+
+- authenticated file upload
+- PostgreSQL metadata persistence
+- MinIO/S3-compatible binary storage
+- private per-user ownership
+- file listing
+- metadata retrieval
+- secure downloads
+- file deletion
+- drag-and-drop browser uploads
+- upload-size enforcement
+- generated object keys
+- rollback when metadata persistence fails

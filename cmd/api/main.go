@@ -13,9 +13,11 @@ import (
 	"github.com/abass-codes/peakcloud/internal/cache"
 	"github.com/abass-codes/peakcloud/internal/config"
 	"github.com/abass-codes/peakcloud/internal/database"
+	"github.com/abass-codes/peakcloud/internal/files"
 	"github.com/abass-codes/peakcloud/internal/health"
 	httpserver "github.com/abass-codes/peakcloud/internal/http"
 	"github.com/abass-codes/peakcloud/internal/logger"
+	"github.com/abass-codes/peakcloud/internal/storage"
 	"go.uber.org/zap"
 )
 
@@ -70,9 +72,36 @@ func main() {
 		cfg.SessionSecure,
 	)
 
+	objectStore, err := storage.NewObjectStore(
+		cfg.S3Endpoint,
+		cfg.S3AccessKey,
+		cfg.S3SecretKey,
+		cfg.S3Bucket,
+		cfg.S3UseSSL,
+	)
+	if err != nil {
+		log.Fatal("create object storage client", zap.Error(err))
+	}
+
+	if err := objectStore.EnsureBucket(ctx); err != nil {
+		log.Fatal("ensure object storage bucket", zap.Error(err))
+	}
+
+	fileRepository := files.NewRepository(db)
+	fileService := files.NewService(
+		fileRepository,
+		objectStore,
+		cfg.MaxUploadSize,
+	)
+	fileHandler := files.NewHandler(
+		fileService,
+		cfg.MaxUploadSize,
+	)
+
 	router := httpserver.NewRouter(
 		healthHandler,
 		authHandler,
+		fileHandler,
 		authService,
 		cfg.SessionCookieName,
 		cfg.WebURL,

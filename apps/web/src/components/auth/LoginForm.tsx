@@ -20,7 +20,7 @@ export default function LoginForm() {
     setLoading(true);
 
     try {
-      await login({ email, password });
+      await login(email, password);
       router.push("/dashboard");
       router.refresh();
     } catch (error) {

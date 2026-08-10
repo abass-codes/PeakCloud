@@ -33,3 +33,17 @@ func Middleware(service *Service, cookieName string) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func UserFromContext(c *gin.Context) (*User, bool) {
+	value, exists := c.Get("user")
+	if !exists {
+		return nil, false
+	}
+
+	user, ok := value.(*User)
+	if !ok || user == nil {
+		return nil, false
+	}
+
+	return user, true
+}
