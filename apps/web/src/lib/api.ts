@@ -11,6 +11,7 @@ export type User = {
 
 export type StoredFile = {
   id: string;
+  folder_id?: string;
   name: string;
   content_type: string;
   size_bytes: number;
@@ -19,35 +20,63 @@ export type StoredFile = {
   updated_at: string;
 };
 
-type UserResponse = {
-  user: User;
+export type Folder = {
+  id: string;
+  parent_id?: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
 };
 
-type FileResponse = {
-  file: StoredFile;
-};
-
-type FilesResponse = {
+export type DriveContents = {
+  folder_id?: string;
+  breadcrumbs: Folder[];
+  folders: Folder[];
   files: StoredFile[];
 };
 
-async function parseError(response: Response): Promise<string> {
-  try {
-    const body = (await response.json()) as { error?: string };
-    return body.error ?? "Request failed";
-  } catch {
-    return "Request failed";
+export type BulkItem = {
+  type: "file" | "folder";
+  id: string;
+};
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    credentials: "include",
+    headers: {
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    let message = "Request failed";
+
+    try {
+      const body = (await response.json()) as { error?: string };
+      message = body.error ?? message;
+    } catch {}
+
+    throw new Error(message);
   }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
 }
 
 export async function register(
   email: string,
   displayName: string,
   password: string,
-): Promise<User> {
-  const response = await fetch(`${API_URL}/api/v1/auth/register`, {
+) {
+  return request<{ user: User }>("/api/v1/auth/register", {
     method: "POST",
-    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
@@ -57,126 +86,258 @@ export async function register(
       password,
     }),
   });
-
-  if (!response.ok) {
-    throw new Error(await parseError(response));
-  }
-
-  const body = (await response.json()) as UserResponse;
-  return body.user;
 }
 
-export async function login(
-  email: string,
-  password: string,
-): Promise<User> {
-  const response = await fetch(`${API_URL}/api/v1/auth/login`, {
+export async function login(email: string, password: string) {
+  return request<{ user: User }>("/api/v1/auth/login", {
     method: "POST",
-    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function logout() {
+  return request<void>("/api/v1/auth/logout", {
+    method: "POST",
+  });
+}
+
+export async function getCurrentUser() {
+  const result = await request<{ user: User }>("/api/v1/me");
+  return result.user;
+}
+
+export async function getDrive(folderId?: string) {
+  const query = folderId
+    ? `?folder_id=${encodeURIComponent(folderId)}`
+    : "";
+
+  return request<DriveContents>(`/api/v1/drive${query}`);
+}
+
+export async function createFolder(
+  name: string,
+  parentId?: string,
+) {
+  const result = await request<{ folder: Folder }>("/api/v1/folders", {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      email,
-      password,
+      name,
+      parent_id: parentId ?? null,
     }),
   });
 
-  if (!response.ok) {
-    throw new Error(await parseError(response));
-  }
-
-  const body = (await response.json()) as UserResponse;
-  return body.user;
+  return result.folder;
 }
 
-export async function logout(): Promise<void> {
-  const response = await fetch(`${API_URL}/api/v1/auth/logout`, {
-    method: "POST",
-    credentials: "include",
+export async function renameFolder(id: string, name: string) {
+  const result = await request<{ folder: Folder }>(
+    `/api/v1/folders/${id}/name`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name }),
+    },
+  );
+
+  return result.folder;
+}
+
+export async function moveFolder(
+  id: string,
+  parentId?: string,
+) {
+  const result = await request<{ folder: Folder }>(
+    `/api/v1/folders/${id}/location`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        parent_id: parentId ?? null,
+      }),
+    },
+  );
+
+  return result.folder;
+}
+
+export async function deleteFolder(id: string) {
+  return request<void>(`/api/v1/folders/${id}`, {
+    method: "DELETE",
   });
-
-  if (!response.ok && response.status !== 204) {
-    throw new Error(await parseError(response));
-  }
 }
 
-export async function getCurrentUser(): Promise<User> {
-  const response = await fetch(`${API_URL}/api/v1/me`, {
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new Error(await parseError(response));
-  }
-
-  const body = (await response.json()) as UserResponse;
-  return body.user;
-}
-
-export async function listFiles(): Promise<StoredFile[]> {
-  const response = await fetch(`${API_URL}/api/v1/files`, {
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new Error(await parseError(response));
-  }
-
-  const body = (await response.json()) as FilesResponse;
-  return body.files;
-}
-
-export async function uploadFile(file: File): Promise<StoredFile> {
+export async function uploadFile(
+  file: File,
+  folderId?: string,
+) {
   const form = new FormData();
   form.append("file", file);
 
-  const response = await fetch(`${API_URL}/api/v1/files`, {
+  if (folderId) {
+    form.append("folder_id", folderId);
+  }
+
+  const result = await request<{ file: StoredFile }>("/api/v1/files", {
     method: "POST",
-    credentials: "include",
     body: form,
   });
 
-  if (!response.ok) {
-    throw new Error(await parseError(response));
-  }
-
-  const body = (await response.json()) as FileResponse;
-  return body.file;
+  return result.file;
 }
 
-export async function deleteFile(id: string): Promise<void> {
-  const response = await fetch(`${API_URL}/api/v1/files/${id}`, {
+export async function renameFile(id: string, name: string) {
+  const result = await request<{ file: StoredFile }>(
+    `/api/v1/files/${id}/name`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name }),
+    },
+  );
+
+  return result.file;
+}
+
+export async function moveFile(
+  id: string,
+  folderId?: string,
+) {
+  const result = await request<{ file: StoredFile }>(
+    `/api/v1/files/${id}/location`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        folder_id: folderId ?? null,
+      }),
+    },
+  );
+
+  return result.file;
+}
+
+export async function copyFile(
+  id: string,
+  folderId?: string,
+) {
+  const result = await request<{ file: StoredFile }>(
+    `/api/v1/files/${id}/copy`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        folder_id: folderId ?? null,
+      }),
+    },
+  );
+
+  return result.file;
+}
+
+export async function deleteFile(id: string) {
+  return request<void>(`/api/v1/files/${id}`, {
     method: "DELETE",
-    credentials: "include",
   });
-
-  if (!response.ok && response.status !== 204) {
-    throw new Error(await parseError(response));
-  }
 }
 
-export async function downloadFile(file: StoredFile): Promise<void> {
+export async function downloadFile(
+  id: string,
+  filename: string,
+) {
   const response = await fetch(
-    `${API_URL}/api/v1/files/${file.id}/download`,
+    `${API_URL}/api/v1/files/${id}/download`,
     {
       credentials: "include",
     },
   );
 
   if (!response.ok) {
-    throw new Error(await parseError(response));
+    throw new Error("Unable to download file");
   }
 
   const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
+
   anchor.href = url;
-  anchor.download = file.name;
+  anchor.download = filename;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
 
-  window.URL.revokeObjectURL(url);
+  URL.revokeObjectURL(url);
+}
+
+export async function bulkMove(
+  items: BulkItem[],
+  folderId?: string,
+) {
+  return request<void>("/api/v1/drive/bulk/move", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      items,
+      folder_id: folderId ?? null,
+    }),
+  });
+}
+
+export async function bulkDelete(items: BulkItem[]) {
+  return request<void>("/api/v1/drive/bulk/delete", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ items }),
+  });
+}
+
+export async function bulkDownload(fileIds: string[]) {
+  const response = await fetch(
+    `${API_URL}/api/v1/drive/bulk/download`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        file_ids: fileIds,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Unable to download selected files");
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+
+  anchor.href = url;
+  anchor.download = "peakcloud-files.zip";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+
+  URL.revokeObjectURL(url);
 }

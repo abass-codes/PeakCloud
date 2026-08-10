@@ -10,30 +10,35 @@ import (
 
 	"github.com/minio/minio-go/v7"
 
+	"github.com/abass-codes/peakcloud/internal/folders"
 	"github.com/abass-codes/peakcloud/internal/storage"
 )
 
 type Service struct {
-	repository    *Repository
-	objectStore   *storage.ObjectStore
-	maxUploadSize int64
+	repository       *Repository
+	folderRepository *folders.Repository
+	objectStore      *storage.ObjectStore
+	maxUploadSize    int64
 }
 
 func NewService(
 	repository *Repository,
+	folderRepository *folders.Repository,
 	objectStore *storage.ObjectStore,
 	maxUploadSize int64,
 ) *Service {
 	return &Service{
-		repository:    repository,
-		objectStore:   objectStore,
-		maxUploadSize: maxUploadSize,
+		repository:       repository,
+		folderRepository: folderRepository,
+		objectStore:      objectStore,
+		maxUploadSize:    maxUploadSize,
 	}
 }
 
 func (s *Service) Upload(
 	ctx context.Context,
 	ownerID string,
+	folderID *string,
 	filename string,
 	contentType string,
 	reader io.Reader,
@@ -47,8 +52,11 @@ func (s *Service) Upload(
 		return nil, ErrFileTooLarge
 	}
 
-	contentType = normalizeContentType(filename, contentType)
+	if err := s.validateFolder(ctx, ownerID, folderID); err != nil {
+		return nil, err
+	}
 
+	contentType = normalizeContentType(filename, contentType)
 	objectKey := NewObjectKey(ownerID)
 
 	objectInfo, err := s.objectStore.Put(
@@ -64,6 +72,7 @@ func (s *Service) Upload(
 
 	file := &File{
 		OwnerID:      ownerID,
+		FolderID:     folderID,
 		ObjectKey:    objectKey,
 		OriginalName: filename,
 		ContentType:  contentType,
@@ -86,8 +95,16 @@ func (s *Service) Upload(
 	return file, nil
 }
 
-func (s *Service) List(ctx context.Context, ownerID string) ([]File, error) {
-	return s.repository.ListByOwner(ctx, ownerID)
+func (s *Service) List(
+	ctx context.Context,
+	ownerID string,
+	folderID *string,
+) ([]File, error) {
+	if err := s.validateFolder(ctx, ownerID, folderID); err != nil {
+		return nil, err
+	}
+
+	return s.repository.ListByFolder(ctx, ownerID, folderID)
 }
 
 func (s *Service) Get(
@@ -110,10 +127,82 @@ func (s *Service) Download(
 
 	object, err := s.objectStore.Get(ctx, file.ObjectKey)
 	if err != nil {
-		return nil, nil, fmt.Errorf("load object: %w", err)
+		return nil, nil, fmt.Errorf("get stored object: %w", err)
 	}
 
 	return file, object, nil
+}
+
+func (s *Service) Rename(
+	ctx context.Context,
+	id string,
+	ownerID string,
+	name string,
+) (*File, error) {
+	name = strings.TrimSpace(name)
+
+	if err := ValidateFilename(name); err != nil {
+		return nil, err
+	}
+
+	return s.repository.Rename(ctx, id, ownerID, name)
+}
+
+func (s *Service) Move(
+	ctx context.Context,
+	id string,
+	ownerID string,
+	folderID *string,
+) (*File, error) {
+	if err := s.validateFolder(ctx, ownerID, folderID); err != nil {
+		return nil, err
+	}
+
+	return s.repository.Move(ctx, id, ownerID, folderID)
+}
+
+func (s *Service) Copy(
+	ctx context.Context,
+	id string,
+	ownerID string,
+	folderID *string,
+) (*File, error) {
+	if err := s.validateFolder(ctx, ownerID, folderID); err != nil {
+		return nil, err
+	}
+
+	source, err := s.repository.GetByIDAndOwner(ctx, id, ownerID)
+	if err != nil {
+		return nil, err
+	}
+
+	objectKey := NewObjectKey(ownerID)
+
+	info, err := s.objectStore.Copy(
+		ctx,
+		source.ObjectKey,
+		objectKey,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	copyFile := &File{
+		OwnerID:      ownerID,
+		FolderID:     folderID,
+		ObjectKey:    objectKey,
+		OriginalName: source.OriginalName,
+		ContentType:  source.ContentType,
+		SizeBytes:    source.SizeBytes,
+		ETag:         info.ETag,
+	}
+
+	if err := s.repository.Create(ctx, copyFile); err != nil {
+		_ = s.objectStore.Delete(ctx, objectKey)
+		return nil, err
+	}
+
+	return copyFile, nil
 }
 
 func (s *Service) Delete(
@@ -127,24 +216,48 @@ func (s *Service) Delete(
 	}
 
 	if err := s.objectStore.Delete(ctx, file.ObjectKey); err != nil {
-		return fmt.Errorf("delete object: %w", err)
+		return fmt.Errorf("delete stored object: %w", err)
 	}
 
-	if err := s.repository.DeleteByIDAndOwner(ctx, id, ownerID); err != nil {
+	if err := s.repository.DeleteMetadata(ctx, id, ownerID); err != nil {
 		return fmt.Errorf("delete metadata: %w", err)
 	}
 
 	return nil
 }
 
-func normalizeContentType(filename, supplied string) string {
-	supplied = strings.TrimSpace(supplied)
+func (s *Service) validateFolder(
+	ctx context.Context,
+	ownerID string,
+	folderID *string,
+) error {
+	if folderID == nil {
+		return nil
+	}
 
-	if supplied != "" && supplied != "application/octet-stream" {
-		return supplied
+	_, err := s.folderRepository.GetByIDAndOwner(
+		ctx,
+		*folderID,
+		ownerID,
+	)
+
+	if err == folders.ErrNotFound {
+		return ErrNotFound
+	}
+
+	return err
+}
+
+func normalizeContentType(filename string, contentType string) string {
+	contentType = strings.TrimSpace(contentType)
+
+	if contentType != "" &&
+		contentType != "application/octet-stream" {
+		return contentType
 	}
 
 	extension := filepath.Ext(filename)
+
 	if extension != "" {
 		if detected := mime.TypeByExtension(extension); detected != "" {
 			return detected

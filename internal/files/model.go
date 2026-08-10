@@ -5,6 +5,7 @@ import "time"
 type File struct {
 	ID           string    `json:"id"`
 	OwnerID      string    `json:"-"`
+	FolderID     *string   `json:"folder_id,omitempty"`
 	ObjectKey    string    `json:"-"`
 	OriginalName string    `json:"name"`
 	ContentType  string    `json:"content_type"`

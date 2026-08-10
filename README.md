@@ -107,3 +107,26 @@ Current file capabilities include:
 - upload-size enforcement
 - generated object keys
 - rollback when metadata persistence fails
+
+## File and Folder Management
+
+PeakCloud provides hierarchical filesystem-style organization on top of private object storage.
+
+Current management capabilities include:
+
+- root drive
+- nested folders
+- breadcrumb navigation
+- folder creation
+- file and folder rename
+- file and folder move APIs
+- file copying
+- recursive folder deletion
+- folder cycle prevention
+- folder-aware uploads
+- sorting and filtering
+- multi-item selection
+- bulk deletion
+- bulk file download as ZIP
+- account-isolated file and folder access
+- stable generated object-storage keys

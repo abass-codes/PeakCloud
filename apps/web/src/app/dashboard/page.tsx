@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import FileManager from "@/components/files/FileManager";
+import DriveManager from "@/components/drive/DriveManager";
 import { getCurrentUser, logout, User } from "@/lib/api";
 
 export default function DashboardPage() {
@@ -81,7 +81,7 @@ export default function DashboardPage() {
           </button>
         </header>
 
-        <FileManager />
+        <DriveManager />
       </div>
     </main>
   );

@@ -13,7 +13,9 @@ import (
 	"github.com/abass-codes/peakcloud/internal/cache"
 	"github.com/abass-codes/peakcloud/internal/config"
 	"github.com/abass-codes/peakcloud/internal/database"
+	"github.com/abass-codes/peakcloud/internal/drive"
 	"github.com/abass-codes/peakcloud/internal/files"
+	"github.com/abass-codes/peakcloud/internal/folders"
 	"github.com/abass-codes/peakcloud/internal/health"
 	httpserver "github.com/abass-codes/peakcloud/internal/http"
 	"github.com/abass-codes/peakcloud/internal/logger"
@@ -87,9 +89,15 @@ func main() {
 		log.Fatal("ensure object storage bucket", zap.Error(err))
 	}
 
+	folderRepository := folders.NewRepository(db)
 	fileRepository := files.NewRepository(db)
+
+	folderService := folders.NewService(folderRepository)
+	folderHandler := folders.NewHandler(folderService)
+
 	fileService := files.NewService(
 		fileRepository,
+		folderRepository,
 		objectStore,
 		cfg.MaxUploadSize,
 	)
@@ -98,10 +106,17 @@ func main() {
 		cfg.MaxUploadSize,
 	)
 
+	driveHandler := drive.NewHandler(
+		fileService,
+		folderService,
+	)
+
 	router := httpserver.NewRouter(
 		healthHandler,
 		authHandler,
 		fileHandler,
+		folderHandler,
+		driveHandler,
 		authService,
 		cfg.SessionCookieName,
 		cfg.WebURL,

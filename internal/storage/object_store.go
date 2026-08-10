@@ -127,3 +127,33 @@ func (s *ObjectStore) Ping(ctx context.Context) error {
 
 	return nil
 }
+
+func (s *ObjectStore) Copy(
+	ctx context.Context,
+	sourceKey string,
+	destinationKey string,
+) (*ObjectInfo, error) {
+	source := minio.CopySrcOptions{
+		Bucket: s.bucket,
+		Object: sourceKey,
+	}
+
+	destination := minio.CopyDestOptions{
+		Bucket: s.bucket,
+		Object: destinationKey,
+	}
+
+	info, err := s.client.CopyObject(
+		ctx,
+		destination,
+		source,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("copy object: %w", err)
+	}
+
+	return &ObjectInfo{
+		ETag: info.ETag,
+		Size: info.Size,
+	}, nil
+}
