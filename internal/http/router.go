@@ -9,6 +9,7 @@ import (
 	"github.com/abass-codes/peakcloud/internal/folders"
 	"github.com/abass-codes/peakcloud/internal/health"
 	"github.com/abass-codes/peakcloud/internal/middleware"
+	"github.com/abass-codes/peakcloud/internal/sharing"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -19,6 +20,7 @@ func NewRouter(
 	fileHandler *files.Handler,
 	folderHandler *folders.Handler,
 	driveHandler *drive.Handler,
+	sharingHandler *sharing.Handler,
 	authService *auth.Service,
 	cookieName string,
 	webURL string,
@@ -82,7 +84,21 @@ func NewRouter(
 		protected.POST("/drive/bulk/move", driveHandler.BulkMoveHandler)
 		protected.POST("/drive/bulk/delete", driveHandler.BulkDeleteHandler)
 		protected.POST("/drive/bulk/download", driveHandler.BulkDownload)
+
+		protected.POST("/shares", sharingHandler.Create)
+		protected.GET("/shares", sharingHandler.List)
+		protected.GET("/shared-with-me", sharingHandler.SharedWithMe)
+		protected.PATCH("/shares/:id", sharingHandler.Update)
+		protected.DELETE("/shares/:id", sharingHandler.Delete)
+
+		protected.POST("/public-links", sharingHandler.CreatePublicLink)
+		protected.GET("/public-links", sharingHandler.ListPublicLinks)
+		protected.DELETE("/public-links/:id", sharingHandler.RevokePublicLink)
 	}
+
+	router.POST("/api/v1/public/shares/:token", sharingHandler.ResolvePublic)
+	router.GET("/api/v1/public/shares/:token/content", sharingHandler.PublicContent)
+	router.GET("/api/v1/public/shares/:token/download", sharingHandler.PublicDownload)
 
 	return router
 }

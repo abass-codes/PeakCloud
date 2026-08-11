@@ -350,3 +350,159 @@ export async function getFilePreviewBlob(fileId: string): Promise<Blob> {
 
   return response.blob();
 }
+
+export type ShareResourceType = "file" | "folder";
+export type SharePermission = "viewer" | "editor";
+
+export type ResourceShare = {
+  id: string;
+  owner_id: string;
+  recipient_id: string;
+  recipient_email?: string;
+  resource_type: ShareResourceType;
+  resource_id: string;
+  resource_name: string;
+  permission: SharePermission;
+  allow_download: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicShareLink = {
+  id: string;
+  resource_type: ShareResourceType;
+  resource_id: string;
+  resource_name: string;
+  permission: SharePermission;
+  allow_download: boolean;
+  password_set: boolean;
+  expires_at?: string;
+  revoked_at?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function createResourceShare(input: {
+  recipient_email: string;
+  resource_type: ShareResourceType;
+  resource_id: string;
+  permission: SharePermission;
+  allow_download: boolean;
+}) {
+  const result = await request<{ share: ResourceShare }>("/api/v1/shares", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  return result.share;
+}
+
+export async function getResourceShares() {
+  const result = await request<{ shares: ResourceShare[] }>("/api/v1/shares");
+  return result.shares;
+}
+
+export async function getSharedWithMe() {
+  const result = await request<{ shares: ResourceShare[] }>(
+    "/api/v1/shares/shared-with-me",
+  );
+
+  return result.shares;
+}
+
+export async function updateResourceShare(
+  id: string,
+  input: {
+    permission: SharePermission;
+    allow_download: boolean;
+  },
+) {
+  return request<void>(`/api/v1/shares/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteResourceShare(id: string) {
+  return request<void>(`/api/v1/shares/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function createPublicShareLink(input: {
+  resource_type: ShareResourceType;
+  resource_id: string;
+  permission: SharePermission;
+  allow_download: boolean;
+  password?: string;
+  expires_at?: string;
+}) {
+  const result = await request<{
+    link: PublicShareLink & { token: string };
+  }>("/api/v1/share-links", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  return result.link;
+}
+
+export async function getPublicShareLinks() {
+  const result = await request<{ links: PublicShareLink[] }>(
+    "/api/v1/share-links",
+  );
+
+  return result.links;
+}
+
+export async function revokePublicShareLink(id: string) {
+  return request<void>(`/api/v1/share-links/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function resolvePublicShare(
+  token: string,
+  password = "",
+): Promise<PublicShareLink> {
+  const response = await fetch(`${API_URL}/api/v1/public/shares/${token}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ password }),
+    cache: "no-store",
+  });
+
+  const body = (await response.json()) as {
+    link?: PublicShareLink;
+    error?: string;
+  };
+
+  if (!response.ok || !body.link) {
+    throw new Error(body.error ?? "Unable to open shared resource");
+  }
+
+  return body.link;
+}
+
+export function publicShareContentUrl(token: string, password = "") {
+  const query = password ? `?password=${encodeURIComponent(password)}` : "";
+
+  return `${API_URL}/api/v1/public/shares/${token}/content${query}`;
+}
+
+export function publicShareDownloadUrl(token: string, password = "") {
+  const query = password ? `?password=${encodeURIComponent(password)}` : "";
+
+  return `${API_URL}/api/v1/public/shares/${token}/download${query}`;
+}

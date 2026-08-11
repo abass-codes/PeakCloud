@@ -1,6 +1,7 @@
 "use client";
 
 import FilePreviewModal from "@/components/preview/FilePreviewModal";
+import ShareModal from "@/components/sharing/ShareModal";
 
 import {
   ChangeEvent,
@@ -59,6 +60,11 @@ export default function DriveManager() {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [previewFileId, setPreviewFileId] = useState<string | null>(null);
+  const [shareTarget, setShareTarget] = useState<{
+    id: string;
+    name: string;
+    type: "file" | "folder";
+  } | null>(null);
 
   const refresh = useCallback(async (folderId?: string) => {
     try {
@@ -471,6 +477,20 @@ export default function DriveManager() {
                     <button
                       type="button"
                       onClick={() =>
+                        setShareTarget({
+                          id: folder.id,
+                          name: folder.name,
+                          type: "folder",
+                        })
+                      }
+                      className="text-zinc-400 hover:text-white"
+                    >
+                      Share
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
                         void handleRenameFolder(folder.id, folder.name)
                       }
                       className="text-zinc-400 hover:text-white"
@@ -523,6 +543,20 @@ export default function DriveManager() {
                   <div className="flex gap-4">
                     <button
                       type="button"
+                      onClick={() =>
+                        setShareTarget({
+                          id: file.id,
+                          name: file.name,
+                          type: "file",
+                        })
+                      }
+                      className="text-zinc-400 hover:text-white"
+                    >
+                      Share
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => void downloadFile(file.id, file.name)}
                       className="text-zinc-400 hover:text-white"
                     >
@@ -571,6 +605,15 @@ export default function DriveManager() {
           }
         }}
       />
+
+      {shareTarget && (
+        <ShareModal
+          resourceId={shareTarget.id}
+          resourceName={shareTarget.name}
+          resourceType={shareTarget.type}
+          onClose={() => setShareTarget(null)}
+        />
+      )}
     </section>
   );
 }
