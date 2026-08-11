@@ -147,3 +147,27 @@ Current preview capabilities include:
 - owner-scoped preview authorization
 - private inline content streaming
 - text-preview size limits
+
+## File Sharing
+
+PeakCloud supports secure file and folder sharing through:
+
+- private user-to-user shares
+- viewer and editor permissions
+- per-share download controls
+- Shared With Me
+- permission updates and revocation
+- public share links
+- optional link passwords
+- expiration timestamps
+- public-link revocation
+- public file preview/content delivery
+- controlled public downloads
+
+Public share tokens use cryptographically secure randomness and are persisted only as hashes. Password-protected public links use bcrypt password hashing. Object-storage keys remain private.
+
+See:
+
+- `docs/api/file-sharing.md`
+- `docs/security/file-sharing.md`
+- `docs/adr/0006-file-sharing.md`

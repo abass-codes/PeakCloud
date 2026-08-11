@@ -19,6 +19,7 @@ import (
 	"github.com/abass-codes/peakcloud/internal/health"
 	httpserver "github.com/abass-codes/peakcloud/internal/http"
 	"github.com/abass-codes/peakcloud/internal/logger"
+	"github.com/abass-codes/peakcloud/internal/sharing"
 	"github.com/abass-codes/peakcloud/internal/storage"
 	"go.uber.org/zap"
 )
@@ -106,6 +107,13 @@ func main() {
 		cfg.MaxUploadSize,
 	)
 
+	sharingRepository := sharing.NewRepository(db)
+	sharingService := sharing.NewService(sharingRepository)
+	sharingHandler := sharing.NewHandler(
+		sharingService,
+		objectStore,
+	)
+
 	driveHandler := drive.NewHandler(
 		fileService,
 		folderService,
@@ -117,6 +125,7 @@ func main() {
 		fileHandler,
 		folderHandler,
 		driveHandler,
+		sharingHandler,
 		authService,
 		cfg.SessionCookieName,
 		cfg.WebURL,
