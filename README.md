@@ -171,3 +171,27 @@ See:
 - `docs/api/file-sharing.md`
 - `docs/security/file-sharing.md`
 - `docs/adr/0006-file-sharing.md`
+
+## Centralized Authorization
+
+PeakCloud uses centralized authorization for authenticated file and folder operations.
+
+The authorization system supports:
+
+- owner, editor, and viewer permissions
+- direct resource grants
+- inherited folder permissions
+- download-policy enforcement
+- owner-only destructive operations
+- source and destination checks for resource movement
+- private-resource enumeration protection
+- immediate enforcement of share revocation
+
+Effective permissions are resolved using:
+
+`owner > editor > viewer > no access`
+
+See:
+
+- `docs/security/authorization.md`
+- `docs/adr/0007-centralized-authorization.md`

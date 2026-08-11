@@ -372,3 +372,157 @@ func (r *Repository) ListInFolderTree(
 
 	return result, nil
 }
+
+func (r *Repository) GetByID(
+	ctx context.Context,
+	id string,
+) (*File, error) {
+	var file File
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		SELECT
+			id,
+			owner_id,
+			folder_id,
+			object_key,
+			original_name,
+			content_type,
+			size_bytes,
+			etag,
+			created_at,
+			updated_at
+		FROM files
+		WHERE id = $1
+		`,
+		id,
+	).Scan(
+		&file.ID,
+		&file.OwnerID,
+		&file.FolderID,
+		&file.ObjectKey,
+		&file.OriginalName,
+		&file.ContentType,
+		&file.SizeBytes,
+		&file.ETag,
+		&file.CreatedAt,
+		&file.UpdatedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &file, nil
+}
+
+func (r *Repository) RenameByID(
+	ctx context.Context,
+	id string,
+	name string,
+) (*File, error) {
+	var file File
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		UPDATE files
+		SET
+			original_name = $2,
+			updated_at = NOW()
+		WHERE id = $1
+		RETURNING
+			id,
+			owner_id,
+			folder_id,
+			object_key,
+			original_name,
+			content_type,
+			size_bytes,
+			etag,
+			created_at,
+			updated_at
+		`,
+		id,
+		name,
+	).Scan(
+		&file.ID,
+		&file.OwnerID,
+		&file.FolderID,
+		&file.ObjectKey,
+		&file.OriginalName,
+		&file.ContentType,
+		&file.SizeBytes,
+		&file.ETag,
+		&file.CreatedAt,
+		&file.UpdatedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &file, nil
+}
+
+func (r *Repository) MoveByID(
+	ctx context.Context,
+	id string,
+	folderID *string,
+) (*File, error) {
+	var file File
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		UPDATE files
+		SET
+			folder_id = $2,
+			updated_at = NOW()
+		WHERE id = $1
+		RETURNING
+			id,
+			owner_id,
+			folder_id,
+			object_key,
+			original_name,
+			content_type,
+			size_bytes,
+			etag,
+			created_at,
+			updated_at
+		`,
+		id,
+		folderID,
+	).Scan(
+		&file.ID,
+		&file.OwnerID,
+		&file.FolderID,
+		&file.ObjectKey,
+		&file.OriginalName,
+		&file.ContentType,
+		&file.SizeBytes,
+		&file.ETag,
+		&file.CreatedAt,
+		&file.UpdatedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &file, nil
+}

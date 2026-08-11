@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/abass-codes/peakcloud/internal/auth"
+	"github.com/abass-codes/peakcloud/internal/authorization"
 	"github.com/gin-gonic/gin"
 )
 
@@ -97,6 +98,11 @@ func (h *Handler) Upload(c *gin.Context) {
 				"error": "invalid destination folder",
 			})
 
+		case errors.Is(err, authorization.ErrForbidden):
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "forbidden",
+			})
+
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "unable to upload file",
@@ -155,8 +161,7 @@ func (h *Handler) Get(c *gin.Context) {
 		user.ID,
 	)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		if writeAuthorizationError(c, err, "file not found") {
 			return
 		}
 
@@ -182,8 +187,15 @@ func (h *Handler) Download(c *gin.Context) {
 		user.ID,
 	)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		if errors.Is(err, authorization.ErrForbidden) {
+			c.JSON(
+				http.StatusForbidden,
+				gin.H{"error": "download not permitted"},
+			)
+			return
+		}
+
+		if writeAuthorizationError(c, err, "file not found") {
 			return
 		}
 
@@ -229,8 +241,7 @@ func (h *Handler) Rename(c *gin.Context) {
 		request.Name,
 	)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		if writeAuthorizationError(c, err, "file not found") {
 			return
 		}
 
@@ -335,8 +346,7 @@ func (h *Handler) Delete(c *gin.Context) {
 		user.ID,
 	)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		if writeAuthorizationError(c, err, "file not found") {
 			return
 		}
 
@@ -356,14 +366,13 @@ func (h *Handler) Content(c *gin.Context) {
 		return
 	}
 
-	file, object, err := h.service.Download(
+	file, object, err := h.service.Content(
 		c.Request.Context(),
 		c.Param("id"),
 		user.ID,
 	)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		if writeAuthorizationError(c, err, "file not found") {
 			return
 		}
 
@@ -429,8 +438,7 @@ func (h *Handler) Preview(c *gin.Context) {
 		user.ID,
 	)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		if writeAuthorizationError(c, err, "file not found") {
 			return
 		}
 
@@ -449,4 +457,30 @@ func (h *Handler) Preview(c *gin.Context) {
 		"file":    file,
 		"preview": preview,
 	})
+}
+
+func writeAuthorizationError(
+	c *gin.Context,
+	err error,
+	notFoundMessage string,
+) bool {
+	switch {
+	case errors.Is(err, ErrNotFound),
+		errors.Is(err, authorization.ErrResourceNotFound):
+		c.JSON(
+			http.StatusNotFound,
+			gin.H{"error": notFoundMessage},
+		)
+		return true
+
+	case errors.Is(err, authorization.ErrForbidden):
+		c.JSON(
+			http.StatusForbidden,
+			gin.H{"error": "forbidden"},
+		)
+		return true
+
+	default:
+		return false
+	}
 }
