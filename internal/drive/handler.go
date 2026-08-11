@@ -1,26 +1,31 @@
 package drive
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/abass-codes/peakcloud/internal/auth"
+	"github.com/abass-codes/peakcloud/internal/authorization"
 	"github.com/abass-codes/peakcloud/internal/files"
 	"github.com/abass-codes/peakcloud/internal/folders"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	files   *files.Service
-	folders *folders.Service
+	files         *files.Service
+	folders       *folders.Service
+	authorization *authorization.Service
 }
 
 func NewHandler(
 	fileService *files.Service,
 	folderService *folders.Service,
+	authorizationService *authorization.Service,
 ) *Handler {
 	return &Handler{
-		files:   fileService,
-		folders: folderService,
+		files:         fileService,
+		folders:       folderService,
+		authorization: authorizationService,
 	}
 }
 
@@ -43,7 +48,7 @@ func (h *Handler) Contents(c *gin.Context) {
 		folderID,
 	)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "folder not found"})
+		writeDriveError(c, err, "folder not found")
 		return
 	}
 
@@ -53,9 +58,7 @@ func (h *Handler) Contents(c *gin.Context) {
 		folderID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "unable to list drive contents",
-		})
+		writeDriveError(c, err, "unable to list drive contents")
 		return
 	}
 
@@ -68,7 +71,7 @@ func (h *Handler) Contents(c *gin.Context) {
 			user.ID,
 		)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "folder not found"})
+			writeDriveError(c, err, "folder not found")
 			return
 		}
 	}
@@ -119,7 +122,7 @@ func (h *Handler) BulkMoveHandler(c *gin.Context) {
 		request.Items,
 		request.FolderID,
 	); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bulk move failed"})
+		writeDriveError(c, err, "bulk move failed")
 		return
 	}
 
@@ -150,7 +153,7 @@ func (h *Handler) BulkDeleteHandler(c *gin.Context) {
 		user.ID,
 		request.Items,
 	); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bulk delete failed"})
+		writeDriveError(c, err, "bulk delete failed")
 		return
 	}
 
@@ -176,6 +179,20 @@ func (h *Handler) BulkDownload(c *gin.Context) {
 		return
 	}
 
+	// Do not write response headers until authorization succeeds.
+	for _, id := range request.FileIDs {
+		if _, err := h.authorization.Authorize(
+			c.Request.Context(),
+			user.ID,
+			authorization.ResourceFile,
+			id,
+			authorization.ActionDownload,
+		); err != nil {
+			writeDriveError(c, err, "bulk download failed")
+			return
+		}
+	}
+
 	c.Header("Content-Type", "application/zip")
 	c.Header(
 		"Content-Disposition",
@@ -189,5 +206,43 @@ func (h *Handler) BulkDownload(c *gin.Context) {
 		c.Writer,
 	); err != nil {
 		return
+	}
+}
+
+func writeDriveError(
+	c *gin.Context,
+	err error,
+	fallback string,
+) {
+	switch {
+	case errors.Is(err, authorization.ErrResourceNotFound):
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "resource not found",
+		})
+
+	case errors.Is(err, authorization.ErrForbidden):
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "forbidden",
+		})
+
+	case errors.Is(err, files.ErrNotFound):
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "file not found",
+		})
+
+	case errors.Is(err, folders.ErrNotFound):
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "folder not found",
+		})
+
+	case errors.Is(err, ErrUnsupportedItemType):
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "unsupported item type",
+		})
+
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fallback,
+		})
 	}
 }

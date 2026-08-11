@@ -401,3 +401,194 @@ func (r *Repository) Delete(
 
 	return nil
 }
+
+func (r *Repository) GetByID(
+	ctx context.Context,
+	id string,
+) (*Folder, error) {
+	var folder Folder
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		SELECT
+			id,
+			owner_id,
+			parent_id,
+			name,
+			created_at,
+			updated_at
+		FROM folders
+		WHERE id = $1
+		`,
+		id,
+	).Scan(
+		&folder.ID,
+		&folder.OwnerID,
+		&folder.ParentID,
+		&folder.Name,
+		&folder.CreatedAt,
+		&folder.UpdatedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &folder, nil
+}
+
+func (r *Repository) ListChildrenByFolder(
+	ctx context.Context,
+	parentID string,
+) ([]Folder, error) {
+	rows, err := r.db.Query(
+		ctx,
+		`
+		SELECT
+			id,
+			owner_id,
+			parent_id,
+			name,
+			created_at,
+			updated_at
+		FROM folders
+		WHERE parent_id = $1
+		ORDER BY lower(name), created_at
+		`,
+		parentID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	folders := make([]Folder, 0)
+
+	for rows.Next() {
+		var folder Folder
+
+		if err := rows.Scan(
+			&folder.ID,
+			&folder.OwnerID,
+			&folder.ParentID,
+			&folder.Name,
+			&folder.CreatedAt,
+			&folder.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		folders = append(folders, folder)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return folders, nil
+}
+
+func (r *Repository) RenameByID(
+	ctx context.Context,
+	id string,
+	name string,
+) (*Folder, error) {
+	var folder Folder
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		UPDATE folders
+		SET
+			name = $2,
+			updated_at = NOW()
+		WHERE id = $1
+		RETURNING
+			id,
+			owner_id,
+			parent_id,
+			name,
+			created_at,
+			updated_at
+		`,
+		id,
+		name,
+	).Scan(
+		&folder.ID,
+		&folder.OwnerID,
+		&folder.ParentID,
+		&folder.Name,
+		&folder.CreatedAt,
+		&folder.UpdatedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, ErrDuplicateName
+		}
+
+		return nil, err
+	}
+
+	return &folder, nil
+}
+
+func (r *Repository) MoveByID(
+	ctx context.Context,
+	id string,
+	parentID *string,
+) (*Folder, error) {
+	var folder Folder
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		UPDATE folders
+		SET
+			parent_id = $2,
+			updated_at = NOW()
+		WHERE id = $1
+		RETURNING
+			id,
+			owner_id,
+			parent_id,
+			name,
+			created_at,
+			updated_at
+		`,
+		id,
+		parentID,
+	).Scan(
+		&folder.ID,
+		&folder.OwnerID,
+		&folder.ParentID,
+		&folder.Name,
+		&folder.CreatedAt,
+		&folder.UpdatedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, ErrDuplicateName
+		}
+
+		return nil, err
+	}
+
+	return &folder, nil
+}

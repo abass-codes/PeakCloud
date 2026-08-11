@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/abass-codes/peakcloud/internal/auth"
+	"github.com/abass-codes/peakcloud/internal/authorization"
 	"github.com/abass-codes/peakcloud/internal/cache"
 	"github.com/abass-codes/peakcloud/internal/config"
 	"github.com/abass-codes/peakcloud/internal/database"
@@ -91,14 +92,23 @@ func main() {
 	}
 
 	folderRepository := folders.NewRepository(db)
+	authorizationRepository := authorization.NewRepository(db)
+	authorizationService := authorization.NewService(
+		authorizationRepository,
+	)
+
 	fileRepository := files.NewRepository(db)
 
-	folderService := folders.NewService(folderRepository)
+	folderService := folders.NewService(
+		folderRepository,
+		authorizationService,
+	)
 	folderHandler := folders.NewHandler(folderService)
 
 	fileService := files.NewService(
 		fileRepository,
 		folderRepository,
+		authorizationService,
 		objectStore,
 		cfg.MaxUploadSize,
 	)
@@ -117,6 +127,7 @@ func main() {
 	driveHandler := drive.NewHandler(
 		fileService,
 		folderService,
+		authorizationService,
 	)
 
 	router := httpserver.NewRouter(

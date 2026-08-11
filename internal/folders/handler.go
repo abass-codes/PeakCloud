@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/abass-codes/peakcloud/internal/auth"
+	"github.com/abass-codes/peakcloud/internal/authorization"
 	"github.com/gin-gonic/gin"
 )
 
@@ -49,6 +50,14 @@ func (h *Handler) Create(c *gin.Context) {
 		request.Name,
 	)
 	if err != nil {
+		if writeAuthorizationError(
+			c,
+			err,
+			"folder not found",
+		) {
+			return
+		}
+
 		writeError(c, err)
 		return
 	}
@@ -69,6 +78,14 @@ func (h *Handler) Get(c *gin.Context) {
 		user.ID,
 	)
 	if err != nil {
+		if writeAuthorizationError(
+			c,
+			err,
+			"folder not found",
+		) {
+			return
+		}
+
 		writeError(c, err)
 		return
 	}
@@ -95,6 +112,14 @@ func (h *Handler) List(c *gin.Context) {
 		parentID,
 	)
 	if err != nil {
+		if writeAuthorizationError(
+			c,
+			err,
+			"folder not found",
+		) {
+			return
+		}
+
 		writeError(c, err)
 		return
 	}
@@ -122,6 +147,14 @@ func (h *Handler) Rename(c *gin.Context) {
 		request.Name,
 	)
 	if err != nil {
+		if writeAuthorizationError(
+			c,
+			err,
+			"folder not found",
+		) {
+			return
+		}
+
 		writeError(c, err)
 		return
 	}
@@ -149,6 +182,14 @@ func (h *Handler) Move(c *gin.Context) {
 		request.ParentID,
 	)
 	if err != nil {
+		if writeAuthorizationError(
+			c,
+			err,
+			"folder not found",
+		) {
+			return
+		}
+
 		writeError(c, err)
 		return
 	}
@@ -169,6 +210,14 @@ func (h *Handler) Breadcrumbs(c *gin.Context) {
 		user.ID,
 	)
 	if err != nil {
+		if writeAuthorizationError(
+			c,
+			err,
+			"folder not found",
+		) {
+			return
+		}
+
 		writeError(c, err)
 		return
 	}
@@ -212,9 +261,38 @@ func writeError(c *gin.Context, err error) {
 	case errors.Is(err, ErrInvalidMove):
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid folder move"})
 
+	case errors.Is(err, authorization.ErrForbidden):
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "folder operation failed",
 		})
+	}
+}
+
+func writeAuthorizationError(
+	c *gin.Context,
+	err error,
+	notFoundMessage string,
+) bool {
+	switch {
+	case errors.Is(err, ErrNotFound),
+		errors.Is(err, authorization.ErrResourceNotFound):
+		c.JSON(
+			http.StatusNotFound,
+			gin.H{"error": notFoundMessage},
+		)
+		return true
+
+	case errors.Is(err, authorization.ErrForbidden):
+		c.JSON(
+			http.StatusForbidden,
+			gin.H{"error": "forbidden"},
+		)
+		return true
+
+	default:
+		return false
 	}
 }
