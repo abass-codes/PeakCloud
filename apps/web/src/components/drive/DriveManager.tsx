@@ -1,6 +1,7 @@
 "use client";
 
 import FilePreviewModal from "@/components/preview/FilePreviewModal";
+import VersionHistoryModal from "@/components/versions/VersionHistoryModal";
 import ShareModal from "@/components/sharing/ShareModal";
 
 import {
@@ -64,6 +65,10 @@ export default function DriveManager() {
     id: string;
     name: string;
     type: "file" | "folder";
+  } | null>(null);
+  const [versionTarget, setVersionTarget] = useState<{
+    id: string;
+    name: string;
   } | null>(null);
 
   const refresh = useCallback(async (folderId?: string) => {
@@ -557,6 +562,19 @@ export default function DriveManager() {
 
                     <button
                       type="button"
+                      onClick={() =>
+                        setVersionTarget({
+                          id: file.id,
+                          name: file.name,
+                        })
+                      }
+                      className="text-zinc-400 hover:text-white"
+                    >
+                      Versions
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => void downloadFile(file.id, file.name)}
                       className="text-zinc-400 hover:text-white"
                     >
@@ -612,6 +630,15 @@ export default function DriveManager() {
           resourceName={shareTarget.name}
           resourceType={shareTarget.type}
           onClose={() => setShareTarget(null)}
+        />
+      )}
+
+      {versionTarget && (
+        <VersionHistoryModal
+          fileId={versionTarget.id}
+          fileName={versionTarget.name}
+          onClose={() => setVersionTarget(null)}
+          onChanged={() => refresh(currentFolderId)}
         />
       )}
     </section>

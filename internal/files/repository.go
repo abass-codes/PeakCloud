@@ -526,3 +526,65 @@ func (r *Repository) MoveByID(
 
 	return &file, nil
 }
+
+func (r *Repository) UpdateContent(
+	ctx context.Context,
+	id string,
+	objectKey string,
+	contentType string,
+	sizeBytes int64,
+	etag string,
+) (*File, error) {
+	var file File
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		UPDATE files
+		SET
+			object_key = $2,
+			content_type = $3,
+			size_bytes = $4,
+			etag = NULLIF($5, ''),
+			updated_at = NOW()
+		WHERE id = $1
+		RETURNING
+			id,
+			owner_id,
+			folder_id,
+			object_key,
+			original_name,
+			content_type,
+			size_bytes,
+			COALESCE(etag, ''),
+			created_at,
+			updated_at
+		`,
+		id,
+		objectKey,
+		contentType,
+		sizeBytes,
+		etag,
+	).Scan(
+		&file.ID,
+		&file.OwnerID,
+		&file.FolderID,
+		&file.ObjectKey,
+		&file.OriginalName,
+		&file.ContentType,
+		&file.SizeBytes,
+		&file.ETag,
+		&file.CreatedAt,
+		&file.UpdatedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &file, nil
+}
