@@ -195,3 +195,39 @@ See:
 
 - `docs/security/authorization.md`
 - `docs/adr/0007-centralized-authorization.md`
+
+## File Versioning and Recovery
+
+PeakCloud preserves immutable historical versions of file content while maintaining a stable logical file identity.
+
+Current versioning capabilities include:
+
+- automatic version 1 backfill for existing files
+- immutable historical file versions
+- unique object-storage keys for every version
+- authenticated version history
+- historical version metadata
+- historical content streaming
+- historical version downloads
+- new-version uploads
+- restore without destructive overwrite
+- centralized read, download, and edit authorization
+- inherited folder-sharing authorization
+- viewer/editor permission enforcement
+- per-share download enforcement
+
+Restoring an older version creates a new version rather than rewriting history.
+
+For example:
+
+    v1
+    v2
+    v3
+    v4 <- restored copy of v1
+
+See:
+
+- `docs/features/file-versioning.md`
+- `docs/api/file-versioning.md`
+- `docs/security/file-versioning.md`
+- `docs/adr/0008-file-versioning.md`

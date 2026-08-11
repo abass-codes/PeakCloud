@@ -506,3 +506,113 @@ export function publicShareDownloadUrl(token: string, password = "") {
 
   return `${API_URL}/api/v1/public/shares/${token}/download${query}`;
 }
+
+export type FileVersion = {
+  id: string;
+  file_id: string;
+  version_number: number;
+  size_bytes: number;
+  content_type: string;
+  etag?: string;
+  created_by: string;
+  created_at: string;
+};
+
+export async function getFileVersions(fileId: string) {
+  const result = await request<{ versions: FileVersion[] }>(
+    `/api/v1/files/${fileId}/versions`,
+  );
+
+  return result.versions;
+}
+
+export async function getFileVersion(
+  fileId: string,
+  versionNumber: number,
+) {
+  const result = await request<{ version: FileVersion }>(
+    `/api/v1/files/${fileId}/versions/${versionNumber}`,
+  );
+
+  return result.version;
+}
+
+export async function uploadFileVersion(
+  fileId: string,
+  file: File,
+) {
+  const form = new FormData();
+  form.append("file", file);
+
+  const result = await request<{ version: FileVersion }>(
+    `/api/v1/files/${fileId}/versions`,
+    {
+      method: "POST",
+      body: form,
+    },
+  );
+
+  return result.version;
+}
+
+export async function getFileVersionContent(
+  fileId: string,
+  versionNumber: number,
+): Promise<Blob> {
+  const response = await fetch(
+    `${API_URL}/api/v1/files/${fileId}/versions/${versionNumber}/content`,
+    {
+      credentials: "include",
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Unable to load file version content");
+  }
+
+  return response.blob();
+}
+
+export async function downloadFileVersion(
+  fileId: string,
+  versionNumber: number,
+  filename: string,
+) {
+  const response = await fetch(
+    `${API_URL}/api/v1/files/${fileId}/versions/${versionNumber}/download`,
+    {
+      credentials: "include",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Unable to download file version");
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+
+  URL.revokeObjectURL(url);
+}
+
+export async function restoreFileVersion(
+  fileId: string,
+  versionNumber: number,
+) {
+  const result = await request<{ version: FileVersion }>(
+    `/api/v1/files/${fileId}/versions/${versionNumber}/restore`,
+    {
+      method: "POST",
+    },
+  );
+
+  return result.version;
+}
