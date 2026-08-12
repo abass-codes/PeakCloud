@@ -33,6 +33,8 @@ type Config struct {
 	SessionCookieName string
 	SessionTTL        time.Duration
 	SessionSecure     bool
+
+	Reliability ReliabilityConfig
 }
 
 func Load() (*Config, error) {
@@ -71,6 +73,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("SESSION_TTL_HOURS must be greater than zero")
 	}
 
+	reliability, err := loadReliabilityConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		AppEnv: getEnv("APP_ENV", "development"),
 
@@ -95,6 +102,8 @@ func Load() (*Config, error) {
 		SessionCookieName: getEnv("SESSION_COOKIE_NAME", "peakcloud_session"),
 		SessionTTL:        time.Duration(sessionTTLHours) * time.Hour,
 		SessionSecure:     sessionSecure,
+
+		Reliability: reliability,
 	}
 
 	if cfg.DatabaseURL == "" {

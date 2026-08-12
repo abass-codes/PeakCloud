@@ -16,6 +16,12 @@ func NewHandler(service *Service) *Handler {
 	}
 }
 
+func (h *Handler) Live(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"status": "ok",
+	})
+}
+
 func (h *Handler) Health(c *gin.Context) {
 	status := h.service.Check(c.Request.Context())
 
