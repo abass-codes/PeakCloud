@@ -164,6 +164,7 @@ func main() {
 		authService,
 		cfg.SessionCookieName,
 		cfg.WebURL,
+		log,
 	)
 
 	server := &http.Server{

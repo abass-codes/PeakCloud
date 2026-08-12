@@ -1,0 +1,82 @@
+name: Integration CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  infrastructure:
+    name: Infrastructure Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start infrastructure
+        run: docker compose up -d postgres redis minio
+
+      - name: Show container status
+        run: docker compose ps
+
+      - name: Wait for PostgreSQL
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if docker compose exec -T postgres \
+              pg_isready -U peakcloud -d peakcloud; then
+              exit 0
+            fi
+
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+          docker compose logs postgres
+          exit 1
+
+      - name: Verify Redis
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if [ "$(docker compose exec -T redis redis-cli ping | tr -d '\r')" = "PONG" ]; then
+              exit 0
+            fi
+
+            echo "Waiting for Redis..."
+            sleep 2
+          done
+
+          docker compose logs redis
+          exit 1
+
+      - name: Verify MinIO
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent http://localhost:9000/minio/health/live >/dev/null; then
+              exit 0
+            fi
+
+            echo "Waiting for MinIO..."
+            sleep 2
+          done
+
+          docker compose logs minio
+          exit 1
+
+      - name: Stop infrastructure
+        if: always()
+        run: docker compose down -v

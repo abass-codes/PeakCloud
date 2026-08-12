@@ -14,6 +14,7 @@ import (
 	"github.com/abass-codes/peakcloud/internal/versions"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func NewRouter(
@@ -28,10 +29,15 @@ func NewRouter(
 	authService *auth.Service,
 	cookieName string,
 	webURL string,
+	log *zap.Logger,
 ) *gin.Engine {
 	router := gin.New()
 
+	httpMetrics := middleware.NewHTTPMetrics()
+
 	router.Use(middleware.RequestID())
+	router.Use(middleware.RequestLogger(log))
+	router.Use(httpMetrics.Middleware())
 	router.Use(middleware.SecurityHeaders())
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
@@ -45,6 +51,7 @@ func NewRouter(
 	}))
 
 	router.GET("/live", healthHandler.Live)
+	router.GET("/metrics", httpMetrics.Handler)
 	router.GET("/health", healthHandler.Health)
 
 	authRateLimiter := middleware.NewRateLimiter(
