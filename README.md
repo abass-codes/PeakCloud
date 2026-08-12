@@ -304,3 +304,22 @@ For implementation details, see:
 - `docs/api/trash-recovery.md`
 - `docs/security/trash-recovery.md`
 - `docs/adr/0009-trash-recovery.md`
+
+## Production Security & Reliability
+
+PeakCloud includes production-oriented security and reliability controls:
+
+- Production startup validation for security-sensitive configuration.
+- Request ID middleware for request correlation.
+- Security headers applied at the HTTP boundary.
+- Rate limiting for general API, authentication, and public sharing traffic.
+- Request body limits for small-request endpoints without restricting normal file uploads.
+- Configurable HTTP read-header, read, write, idle, and graceful-shutdown timeouts.
+- `/live` for process liveness and `/health` for dependency-aware health checks.
+
+See:
+
+- `docs/features/production-security-reliability.md`
+- `docs/security/production-security.md`
+- `docs/operations/reliability.md`
+- `docs/adr/0010-production-security-reliability.md`

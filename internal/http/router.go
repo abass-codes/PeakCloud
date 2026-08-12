@@ -31,6 +31,8 @@ func NewRouter(
 ) *gin.Engine {
 	router := gin.New()
 
+	router.Use(middleware.RequestID())
+	router.Use(middleware.SecurityHeaders())
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
@@ -42,6 +44,7 @@ func NewRouter(
 		MaxAge:           12 * time.Hour,
 	}))
 
+	router.GET("/live", healthHandler.Live)
 	router.GET("/health", healthHandler.Health)
 
 	authRateLimiter := middleware.NewRateLimiter(
@@ -49,10 +52,22 @@ func NewRouter(
 		time.Minute,
 	)
 
+	apiRateLimiter := middleware.NewRateLimiter(
+		120,
+		time.Minute,
+	)
+
+	publicRateLimiter := middleware.NewRateLimiter(
+		60,
+		time.Minute,
+	)
+
 	api := router.Group("/api/v1")
+	api.Use(apiRateLimiter.Middleware())
 
 	authRoutes := api.Group("/auth")
 	authRoutes.Use(authRateLimiter.Middleware())
+	authRoutes.Use(middleware.BodyLimit(2 * 1024 * 1024))
 	{
 		authRoutes.POST("/register", authHandler.Register)
 		authRoutes.POST("/login", authHandler.Login)
@@ -112,9 +127,14 @@ func NewRouter(
 		protected.DELETE("/public-links/:id", sharingHandler.RevokePublicLink)
 	}
 
-	router.POST("/api/v1/public/shares/:token", sharingHandler.ResolvePublic)
-	router.GET("/api/v1/public/shares/:token/content", sharingHandler.PublicContent)
-	router.GET("/api/v1/public/shares/:token/download", sharingHandler.PublicDownload)
+	publicRoutes := router.Group("/api/v1/public")
+	publicRoutes.Use(publicRateLimiter.Middleware())
+	publicRoutes.Use(middleware.BodyLimit(2 * 1024 * 1024))
+	{
+		publicRoutes.POST("/shares/:token", sharingHandler.ResolvePublic)
+		publicRoutes.GET("/shares/:token/content", sharingHandler.PublicContent)
+		publicRoutes.GET("/shares/:token/download", sharingHandler.PublicDownload)
+	}
 
 	return router
 }

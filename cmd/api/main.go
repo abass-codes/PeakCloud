@@ -3,12 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
 	"github.com/abass-codes/peakcloud/internal/auth"
 	"github.com/abass-codes/peakcloud/internal/authorization"
 	"github.com/abass-codes/peakcloud/internal/cache"
@@ -25,11 +19,19 @@ import (
 	"github.com/abass-codes/peakcloud/internal/trash"
 	"github.com/abass-codes/peakcloud/internal/versions"
 	"go.uber.org/zap"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
+		panic(err)
+	}
+
+	if err := cfg.ValidateProduction(); err != nil {
 		panic(err)
 	}
 
@@ -167,10 +169,10 @@ func main() {
 	server := &http.Server{
 		Addr:              cfg.APIHost + ":" + cfg.APIPort,
 		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		ReadHeaderTimeout: cfg.Reliability.ReadHeaderTimeout,
+		ReadTimeout:       cfg.Reliability.ReadTimeout,
+		WriteTimeout:      cfg.Reliability.WriteTimeout,
+		IdleTimeout:       cfg.Reliability.IdleTimeout,
 	}
 
 	serverErrors := make(chan error, 1)
@@ -208,7 +210,7 @@ func main() {
 
 	shutdownCtx, cancel := context.WithTimeout(
 		context.Background(),
-		10*time.Second,
+		cfg.Reliability.ShutdownTimeout,
 	)
 	defer cancel()
 
