@@ -8,7 +8,7 @@ PeakCloud is under active development.
 
 Current milestone:
 
-**Feature 2 — User Authentication & Account System**
+**Feature 12 — Production Deployment & Final Polish**
 
 ## Tech Stack
 
@@ -323,6 +323,7 @@ See:
 - `docs/security/production-security.md`
 - `docs/operations/reliability.md`
 - `docs/adr/0010-production-security-reliability.md`
+
 ## CI/CD Testing & Observability
 
 PeakCloud includes automated continuous integration and application-level observability for production-oriented development.
@@ -361,3 +362,74 @@ See:
 - `docs/features/cicd-testing-observability.md`
 - `docs/operations/observability.md`
 - `docs/adr/0011-cicd-testing-observability.md`
+
+## Production Deployment & Final Polish
+
+PeakCloud includes a containerized production deployment architecture for the complete application stack.
+
+### Production Stack
+
+The production deployment includes:
+
+- Go API
+- Next.js web application
+- PostgreSQL
+- Redis
+- MinIO S3-compatible object storage
+
+The API and web applications use multi-stage Docker builds with minimal runtime images and non-root runtime users.
+
+Production orchestration is defined in `docker-compose.production.yml`.
+
+### Production Configuration
+
+Deployment configuration is provided through environment variables.
+
+Use `.env.production.example` as the production configuration template:
+
+    cp .env.production.example .env.production
+
+Replace all placeholder credentials before deployment.
+
+The real `.env.production` file is ignored by Git and must never be committed.
+
+### Build and Start
+
+Validate the deployment configuration:
+
+    docker compose --env-file .env.production -f docker-compose.production.yml config
+
+Build the application:
+
+    docker compose --env-file .env.production -f docker-compose.production.yml build
+
+Start the stack:
+
+    docker compose --env-file .env.production -f docker-compose.production.yml up -d
+
+### Deployment Verification
+
+PeakCloud provides production verification through:
+
+    bash scripts/production-smoke-test.sh
+
+and:
+
+    bash scripts/verify-production.sh
+
+The deployment exposes:
+
+- `GET /live` for process liveness
+- `GET /health` for dependency-aware health
+- `GET /metrics` for HTTP metrics
+- the Next.js web application on the configured web port
+
+### Deployment Documentation
+
+See:
+
+- `docs/features/production-deployment.md`
+- `docs/operations/deployment.md`
+- `docs/adr/0012-production-deployment.md`
+
+Feature 12 completes the PeakCloud engineering roadmap with reproducible container builds, production-oriented orchestration, health verification, smoke testing, deployment documentation, and final project polish.

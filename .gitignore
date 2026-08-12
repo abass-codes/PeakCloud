@@ -35,3 +35,5 @@ temp/
 
 # Coverage
 coverage/
+.env.production
+.env.production.local
