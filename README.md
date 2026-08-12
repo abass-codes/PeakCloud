@@ -231,3 +231,76 @@ See:
 - `docs/api/file-versioning.md`
 - `docs/security/file-versioning.md`
 - `docs/adr/0008-file-versioning.md`
+
+## Trash & Recovery
+
+PeakCloud implements a recoverable deletion workflow for files and folders. Resources are soft-deleted before permanent removal, allowing users to recover accidentally deleted content while keeping trashed resources isolated from the active drive.
+
+### Capabilities
+
+- Soft-delete files and folders using `deleted_at` timestamps
+- Dedicated trash view for deleted resources
+- Restore files and folders to active storage
+- Permanently delete resources from trash
+- Bulk trash actions from the drive interface
+- Owner-scoped trash operations
+- Active-resource filtering across file and folder queries
+- Database indexes optimized for active and trashed resources
+- Dedicated `/trash` web interface
+- Authenticated trash API endpoints
+
+### Resource Lifecycle
+
+PeakCloud uses a two-stage deletion model:
+
+```text
+                 restore
+            ┌───────────────┐
+            │               │
+            ▼               │
+        ┌────────┐      ┌────────┐
+        │ Active │ ───► │ Trash  │
+        └────────┘      └────────┘
+             move           │
+           to trash         │ permanent delete
+                            ▼
+                       ┌─────────┐
+                       │ Removed │
+                       └─────────┘
+```
+
+Moving a resource to trash sets its `deleted_at` timestamp instead of immediately destroying it. Restoring the resource clears that timestamp and returns it to the active drive.
+
+Permanent deletion is only permitted for resources already in trash.
+
+### Active Resource Isolation
+
+Normal drive operations exclude soft-deleted resources. Trashed files and folders therefore do not appear in standard drive listings or participate in normal active-resource operations.
+
+Trash-specific repository operations explicitly query resources where `deleted_at` is set.
+
+### API
+
+Authenticated trash operations are available through:
+
+```text
+GET     /api/v1/trash
+POST    /api/v1/trash/:type/:id
+POST    /api/v1/trash/:type/:id/restore
+DELETE  /api/v1/trash/:type/:id
+```
+
+Supported resource types are `file` and `folder`.
+
+### Database Design
+
+Both `files` and `folders` contain nullable `deleted_at` timestamps.
+
+Partial indexes support efficient queries for active and trashed resources while preserving the existing file and folder identities throughout the recovery lifecycle.
+
+For implementation details, see:
+
+- `docs/features/trash-recovery.md`
+- `docs/api/trash-recovery.md`
+- `docs/security/trash-recovery.md`
+- `docs/adr/0009-trash-recovery.md`

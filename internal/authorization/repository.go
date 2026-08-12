@@ -28,7 +28,8 @@ func (r *Repository) FileAccess(
 		ctx,
 		`SELECT owner_id, folder_id
 		 FROM files
-		 WHERE id = $1`,
+		 WHERE id = $1
+		   AND deleted_at IS NULL`,
 		fileID,
 	).Scan(&ownerID, &folderID)
 
@@ -85,7 +86,8 @@ func (r *Repository) FolderAccess(
 		ctx,
 		`SELECT owner_id
 		 FROM folders
-		 WHERE id = $1`,
+		 WHERE id = $1
+		   AND deleted_at IS NULL`,
 		folderID,
 	).Scan(&ownerID)
 
@@ -161,6 +163,7 @@ func (r *Repository) folderTreeAccess(
 				0 AS depth
 			FROM folders
 			WHERE id = $2
+			  AND deleted_at IS NULL
 
 			UNION ALL
 
@@ -171,6 +174,7 @@ func (r *Repository) folderTreeAccess(
 			FROM folders f
 			JOIN ancestry a
 			  ON a.parent_id = f.id
+			  WHERE f.deleted_at IS NULL
 		)
 		SELECT
 			s.permission,

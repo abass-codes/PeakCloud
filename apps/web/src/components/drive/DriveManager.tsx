@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import FilePreviewModal from "@/components/preview/FilePreviewModal";
 import VersionHistoryModal from "@/components/versions/VersionHistoryModal";
 import ShareModal from "@/components/sharing/ShareModal";
@@ -17,14 +19,12 @@ import {
   BulkItem,
   DriveContents,
   StoredFile,
-  bulkDelete,
   bulkDownload,
   copyFile,
   createFolder,
-  deleteFile,
-  deleteFolder,
   downloadFile,
   getDrive,
+  moveToTrash,
   renameFile,
   renameFolder,
   uploadFile,
@@ -265,56 +265,87 @@ export default function DriveManager() {
     }
   }
 
-  async function handleDeleteFolder(id: string) {
-    if (!window.confirm("Delete this folder and everything inside it?")) {
+  async function handleTrashFolder(id: string) {
+    if (!window.confirm("Move this folder to trash?")) {
       return;
     }
 
     try {
-      await deleteFolder(id);
+      setError("");
+      await moveToTrash("folder", id);
       await refresh(currentFolderId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to delete folder");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to move folder to trash",
+      );
     }
   }
 
-  async function handleDeleteFile(id: string) {
-    if (!window.confirm("Delete this file permanently?")) {
+  async function handleTrashFile(id: string) {
+    if (!window.confirm("Move this file to trash?")) {
       return;
     }
 
     try {
-      await deleteFile(id);
+      setError("");
+      await moveToTrash("file", id);
       await refresh(currentFolderId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to delete file");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to move file to trash",
+      );
     }
   }
 
   async function handleCopy(file: StoredFile) {
     try {
+      setError("");
       await copyFile(file.id, currentFolderId);
       await refresh(currentFolderId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to copy file");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to copy file",
+      );
     }
   }
 
-  async function handleBulkDelete() {
+  async function handleBulkTrash() {
     const items = selectedItems();
 
+    if (items.length === 0) {
+      return;
+    }
+
     if (
-      items.length === 0 ||
-      !window.confirm(`Delete ${items.length} selected item(s)?`)
+      !window.confirm(
+        `Move ${items.length} selected item(s) to trash?`,
+      )
     ) {
       return;
     }
 
     try {
-      await bulkDelete(items);
+      setError("");
+
+      await Promise.all(
+        items.map((item) =>
+          moveToTrash(item.type, item.id),
+        ),
+      );
+
       await refresh(currentFolderId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Bulk delete failed");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to move selected items to trash",
+      );
     }
   }
 
@@ -395,6 +426,15 @@ export default function DriveManager() {
             </button>
           </div>
         ))}
+
+        <span className="ml-auto text-zinc-700">|</span>
+
+        <Link
+          href="/trash"
+          className="text-zinc-400 hover:text-white"
+        >
+          Trash
+        </Link>
       </div>
 
       {selected.size > 0 && (
@@ -411,10 +451,10 @@ export default function DriveManager() {
 
           <button
             type="button"
-            onClick={() => void handleBulkDelete()}
+            onClick={() => void handleBulkTrash()}
             className="text-sm text-red-400 hover:text-red-300"
           >
-            Delete
+            Trash
           </button>
         </div>
       )}
@@ -505,10 +545,10 @@ export default function DriveManager() {
 
                     <button
                       type="button"
-                      onClick={() => void handleDeleteFolder(folder.id)}
+                      onClick={() => void handleTrashFolder(folder.id)}
                       className="text-red-400 hover:text-red-300"
                     >
-                      Delete
+                      Trash
                     </button>
                   </div>
                 </div>
@@ -599,10 +639,10 @@ export default function DriveManager() {
 
                     <button
                       type="button"
-                      onClick={() => void handleDeleteFile(file.id)}
+                      onClick={() => void handleTrashFile(file.id)}
                       className="text-red-400 hover:text-red-300"
                     >
-                      Delete
+                      Trash
                     </button>
                   </div>
                 </div>
