@@ -323,3 +323,41 @@ See:
 - `docs/security/production-security.md`
 - `docs/operations/reliability.md`
 - `docs/adr/0010-production-security-reliability.md`
+## CI/CD Testing & Observability
+
+PeakCloud includes automated continuous integration and application-level observability for production-oriented development.
+
+### Continuous Integration
+
+GitHub Actions workflows validate the major application layers:
+
+- backend tests, static analysis, and formatting
+- frontend linting and production builds
+- integration behavior with supporting infrastructure
+
+Workflow definitions are stored in `.github/workflows`.
+
+### Structured HTTP Logging
+
+HTTP requests are recorded as structured log events containing:
+
+- request method
+- request path
+- response status
+- request ID
+- latency
+- client IP
+
+Request IDs allow individual requests to be correlated with application logs during debugging and incident investigation.
+
+### HTTP Metrics
+
+PeakCloud collects HTTP metrics through middleware and exposes them at `GET /metrics`.
+
+Operational endpoints include `GET /live`, `GET /health`, and `GET /metrics`.
+
+See:
+
+- `docs/features/cicd-testing-observability.md`
+- `docs/operations/observability.md`
+- `docs/adr/0011-cicd-testing-observability.md`
