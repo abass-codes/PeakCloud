@@ -616,3 +616,58 @@ export async function restoreFileVersion(
 
   return result.version;
 }
+
+export type TrashResourceType = "file" | "folder";
+
+export type TrashItem = {
+  id: string;
+  resource_type: TrashResourceType;
+  name: string;
+  content_type?: string;
+  size_bytes?: number;
+  deleted_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getTrash() {
+  return request<{ items: TrashItem[] }>(
+    "/api/v1/trash",
+  );
+}
+
+export async function moveToTrash(
+  resourceType: TrashResourceType,
+  resourceId: string,
+) {
+  return request<void>(
+    `/api/v1/trash/${resourceType}/${resourceId}`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+export async function restoreTrashItem(
+  resourceType: TrashResourceType,
+  resourceId: string,
+) {
+  return request<void>(
+    `/api/v1/trash/${resourceType}/${resourceId}/restore`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+export async function permanentlyDeleteTrashItem(
+  resourceType: TrashResourceType,
+  resourceId: string,
+) {
+  return request<void>(
+    `/api/v1/trash/${resourceType}/${resourceId}`,
+    {
+      method: "DELETE",
+    },
+  );
+}

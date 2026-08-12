@@ -10,6 +10,7 @@ import (
 	"github.com/abass-codes/peakcloud/internal/health"
 	"github.com/abass-codes/peakcloud/internal/middleware"
 	"github.com/abass-codes/peakcloud/internal/sharing"
+	"github.com/abass-codes/peakcloud/internal/trash"
 	"github.com/abass-codes/peakcloud/internal/versions"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -20,6 +21,7 @@ func NewRouter(
 	authHandler *auth.Handler,
 	fileHandler *files.Handler,
 	versionHandler *versions.Handler,
+	trashHandler *trash.Handler,
 	folderHandler *folders.Handler,
 	driveHandler *drive.Handler,
 	sharingHandler *sharing.Handler,
@@ -80,6 +82,11 @@ func NewRouter(
 		protected.GET("/files/:id/versions/:version/content", versionHandler.Content)
 		protected.GET("/files/:id/versions/:version/download", versionHandler.Download)
 		protected.POST("/files/:id/versions/:version/restore", versionHandler.Restore)
+
+		protected.GET("/trash", trashHandler.List)
+		protected.POST("/trash/:type/:id", trashHandler.Trash)
+		protected.POST("/trash/:type/:id/restore", trashHandler.Restore)
+		protected.DELETE("/trash/:type/:id", trashHandler.DeletePermanently)
 
 		protected.POST("/folders", folderHandler.Create)
 		protected.GET("/folders", folderHandler.List)

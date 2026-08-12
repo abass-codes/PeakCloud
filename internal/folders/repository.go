@@ -70,6 +70,7 @@ func (r *Repository) GetByIDAndOwner(
 		FROM folders
 		WHERE id = $1
 		  AND owner_id = $2
+              AND deleted_at IS NULL
 		`,
 		id,
 		ownerID,
@@ -111,6 +112,7 @@ func (r *Repository) ListChildren(
 		FROM folders
 		WHERE owner_id = $1
 		  AND parent_id IS NOT DISTINCT FROM $2::uuid
+                  AND deleted_at IS NULL
 		ORDER BY lower(name), created_at
 		`,
 		ownerID,
@@ -164,6 +166,7 @@ func (r *Repository) Rename(
 			updated_at = NOW()
 		WHERE id = $1
 		  AND owner_id = $2
+              AND deleted_at IS NULL
 		RETURNING
 			id,
 			owner_id,
@@ -217,6 +220,7 @@ func (r *Repository) Move(
 			updated_at = NOW()
 		WHERE id = $1
 		  AND owner_id = $2
+              AND deleted_at IS NULL
 		RETURNING
 			id,
 			owner_id,
@@ -269,6 +273,7 @@ func (r *Repository) IsDescendant(
 			FROM folders
 			WHERE parent_id = $1
 			  AND owner_id = $2
+                      AND deleted_at IS NULL
 
 			UNION ALL
 
@@ -277,6 +282,7 @@ func (r *Repository) IsDescendant(
 			JOIN descendants d
 			  ON f.parent_id = d.id
 			WHERE f.owner_id = $2
+                      AND f.deleted_at IS NULL
 		)
 		SELECT EXISTS (
 			SELECT 1
@@ -312,6 +318,7 @@ func (r *Repository) Breadcrumbs(
 			FROM folders
 			WHERE id = $1
 			  AND owner_id = $2
+                      AND deleted_at IS NULL
 
 			UNION ALL
 
@@ -327,6 +334,7 @@ func (r *Repository) Breadcrumbs(
 			JOIN path p
 			  ON p.parent_id = f.id
 			WHERE f.owner_id = $2
+                      AND f.deleted_at IS NULL
 		)
 		SELECT
 			id,
@@ -420,6 +428,7 @@ func (r *Repository) GetByID(
 			updated_at
 		FROM folders
 		WHERE id = $1
+                  AND deleted_at IS NULL
 		`,
 		id,
 	).Scan(
@@ -458,6 +467,7 @@ func (r *Repository) ListChildrenByFolder(
 			updated_at
 		FROM folders
 		WHERE parent_id = $1
+                  AND deleted_at IS NULL
 		ORDER BY lower(name), created_at
 		`,
 		parentID,
@@ -508,6 +518,7 @@ func (r *Repository) RenameByID(
 			name = $2,
 			updated_at = NOW()
 		WHERE id = $1
+                  AND deleted_at IS NULL
 		RETURNING
 			id,
 			owner_id,
@@ -558,6 +569,7 @@ func (r *Repository) MoveByID(
 			parent_id = $2,
 			updated_at = NOW()
 		WHERE id = $1
+                  AND deleted_at IS NULL
 		RETURNING
 			id,
 			owner_id,
@@ -591,4 +603,202 @@ func (r *Repository) MoveByID(
 	}
 
 	return &folder, nil
+}
+
+func (r *Repository) Trash(
+	ctx context.Context,
+	id string,
+	ownerID string,
+) (*Folder, error) {
+	var folder Folder
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		UPDATE folders
+		SET
+			deleted_at = NOW(),
+			updated_at = NOW()
+		WHERE id = $1
+		  AND owner_id = $2
+		  AND deleted_at IS NULL
+		RETURNING
+			id,
+			owner_id,
+			parent_id,
+			name,
+			created_at,
+			updated_at,
+			deleted_at
+		`,
+		id,
+		ownerID,
+	).Scan(
+		&folder.ID,
+		&folder.OwnerID,
+		&folder.ParentID,
+		&folder.Name,
+		&folder.CreatedAt,
+		&folder.UpdatedAt,
+		&folder.DeletedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &folder, nil
+}
+
+func (r *Repository) RestoreFromTrash(
+	ctx context.Context,
+	id string,
+	ownerID string,
+) (*Folder, error) {
+	var folder Folder
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		UPDATE folders
+		SET
+			deleted_at = NULL,
+			updated_at = NOW()
+		WHERE id = $1
+		  AND owner_id = $2
+		  AND deleted_at IS NOT NULL
+		RETURNING
+			id,
+			owner_id,
+			parent_id,
+			name,
+			created_at,
+			updated_at,
+			deleted_at
+		`,
+		id,
+		ownerID,
+	).Scan(
+		&folder.ID,
+		&folder.OwnerID,
+		&folder.ParentID,
+		&folder.Name,
+		&folder.CreatedAt,
+		&folder.UpdatedAt,
+		&folder.DeletedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &folder, nil
+}
+
+func (r *Repository) DeletePermanently(
+	ctx context.Context,
+	id string,
+	ownerID string,
+) (*Folder, error) {
+	var folder Folder
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		DELETE FROM folders
+		WHERE id = $1
+		  AND owner_id = $2
+		  AND deleted_at IS NOT NULL
+		RETURNING
+			id,
+			owner_id,
+			parent_id,
+			name,
+			created_at,
+			updated_at,
+			deleted_at
+		`,
+		id,
+		ownerID,
+	).Scan(
+		&folder.ID,
+		&folder.OwnerID,
+		&folder.ParentID,
+		&folder.Name,
+		&folder.CreatedAt,
+		&folder.UpdatedAt,
+		&folder.DeletedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &folder, nil
+}
+
+func (r *Repository) ListTrashed(
+	ctx context.Context,
+	ownerID string,
+) ([]Folder, error) {
+	rows, err := r.db.Query(
+		ctx,
+		`
+		SELECT
+			id,
+			owner_id,
+			parent_id,
+			name,
+			created_at,
+			updated_at,
+			deleted_at
+		FROM folders
+		WHERE owner_id = $1
+		  AND deleted_at IS NOT NULL
+		ORDER BY deleted_at DESC
+		`,
+		ownerID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]Folder, 0)
+
+	for rows.Next() {
+		var folder Folder
+
+		if err := rows.Scan(
+			&folder.ID,
+			&folder.OwnerID,
+			&folder.ParentID,
+			&folder.Name,
+			&folder.CreatedAt,
+			&folder.UpdatedAt,
+			&folder.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		result = append(result, folder)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

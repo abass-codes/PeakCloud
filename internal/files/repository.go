@@ -70,6 +70,7 @@ func (r *Repository) GetByIDAndOwner(
 		FROM files
 		WHERE id = $1
 		  AND owner_id = $2
+              AND deleted_at IS NULL
 		`,
 		id,
 		ownerID,
@@ -119,6 +120,7 @@ func (r *Repository) ListByFolder(
 		FROM files
 		WHERE owner_id = $1
 		  AND folder_id IS NOT DISTINCT FROM $2::uuid
+                  AND deleted_at IS NULL
 		ORDER BY lower(original_name), created_at DESC
 		`,
 		ownerID,
@@ -176,6 +178,7 @@ func (r *Repository) Rename(
 			updated_at = NOW()
 		WHERE id = $1
 		  AND owner_id = $2
+              AND deleted_at IS NULL
 		RETURNING
 			id,
 			owner_id,
@@ -232,6 +235,7 @@ func (r *Repository) Move(
 			updated_at = NOW()
 		WHERE id = $1
 		  AND owner_id = $2
+              AND deleted_at IS NULL
 		RETURNING
 			id,
 			owner_id,
@@ -310,6 +314,7 @@ func (r *Repository) ListInFolderTree(
 			FROM folders
 			WHERE id = $1
 			  AND owner_id = $2
+                      AND deleted_at IS NULL
 
 			UNION ALL
 
@@ -318,6 +323,7 @@ func (r *Repository) ListInFolderTree(
 			JOIN tree t
 			  ON f.parent_id = t.id
 			WHERE f.owner_id = $2
+                      AND f.deleted_at IS NULL
 		)
 		SELECT
 			fi.id,
@@ -334,6 +340,7 @@ func (r *Repository) ListInFolderTree(
 		JOIN tree t
 		  ON fi.folder_id = t.id
 		WHERE fi.owner_id = $2
+              AND fi.deleted_at IS NULL
 		`,
 		folderID,
 		ownerID,
@@ -395,6 +402,7 @@ func (r *Repository) GetByID(
 			updated_at
 		FROM files
 		WHERE id = $1
+              AND deleted_at IS NULL
 		`,
 		id,
 	).Scan(
@@ -436,6 +444,7 @@ func (r *Repository) RenameByID(
 			original_name = $2,
 			updated_at = NOW()
 		WHERE id = $1
+              AND deleted_at IS NULL
 		RETURNING
 			id,
 			owner_id,
@@ -489,6 +498,7 @@ func (r *Repository) MoveByID(
 			folder_id = $2,
 			updated_at = NOW()
 		WHERE id = $1
+              AND deleted_at IS NULL
 		RETURNING
 			id,
 			owner_id,
@@ -548,6 +558,7 @@ func (r *Repository) UpdateContent(
 			etag = NULLIF($5, ''),
 			updated_at = NOW()
 		WHERE id = $1
+              AND deleted_at IS NULL
 		RETURNING
 			id,
 			owner_id,
@@ -587,4 +598,234 @@ func (r *Repository) UpdateContent(
 	}
 
 	return &file, nil
+}
+
+func (r *Repository) Trash(
+	ctx context.Context,
+	id string,
+	ownerID string,
+) (*File, error) {
+	var file File
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		UPDATE files
+		SET
+			deleted_at = NOW(),
+			updated_at = NOW()
+		WHERE id = $1
+		  AND owner_id = $2
+		  AND deleted_at IS NULL
+		RETURNING
+			id,
+			owner_id,
+			folder_id,
+			object_key,
+			original_name,
+			content_type,
+			size_bytes,
+			COALESCE(etag, ''),
+			created_at,
+			updated_at,
+			deleted_at
+		`,
+		id,
+		ownerID,
+	).Scan(
+		&file.ID,
+		&file.OwnerID,
+		&file.FolderID,
+		&file.ObjectKey,
+		&file.OriginalName,
+		&file.ContentType,
+		&file.SizeBytes,
+		&file.ETag,
+		&file.CreatedAt,
+		&file.UpdatedAt,
+		&file.DeletedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &file, nil
+}
+
+func (r *Repository) RestoreFromTrash(
+	ctx context.Context,
+	id string,
+	ownerID string,
+) (*File, error) {
+	var file File
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		UPDATE files
+		SET
+			deleted_at = NULL,
+			updated_at = NOW()
+		WHERE id = $1
+		  AND owner_id = $2
+		  AND deleted_at IS NOT NULL
+		RETURNING
+			id,
+			owner_id,
+			folder_id,
+			object_key,
+			original_name,
+			content_type,
+			size_bytes,
+			COALESCE(etag, ''),
+			created_at,
+			updated_at,
+			deleted_at
+		`,
+		id,
+		ownerID,
+	).Scan(
+		&file.ID,
+		&file.OwnerID,
+		&file.FolderID,
+		&file.ObjectKey,
+		&file.OriginalName,
+		&file.ContentType,
+		&file.SizeBytes,
+		&file.ETag,
+		&file.CreatedAt,
+		&file.UpdatedAt,
+		&file.DeletedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &file, nil
+}
+
+func (r *Repository) DeletePermanently(
+	ctx context.Context,
+	id string,
+	ownerID string,
+) (*File, error) {
+	var file File
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		DELETE FROM files
+		WHERE id = $1
+		  AND owner_id = $2
+		  AND deleted_at IS NOT NULL
+		RETURNING
+			id,
+			owner_id,
+			folder_id,
+			object_key,
+			original_name,
+			content_type,
+			size_bytes,
+			COALESCE(etag, ''),
+			created_at,
+			updated_at,
+			deleted_at
+		`,
+		id,
+		ownerID,
+	).Scan(
+		&file.ID,
+		&file.OwnerID,
+		&file.FolderID,
+		&file.ObjectKey,
+		&file.OriginalName,
+		&file.ContentType,
+		&file.SizeBytes,
+		&file.ETag,
+		&file.CreatedAt,
+		&file.UpdatedAt,
+		&file.DeletedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &file, nil
+}
+
+func (r *Repository) ListTrashed(
+	ctx context.Context,
+	ownerID string,
+) ([]File, error) {
+	rows, err := r.db.Query(
+		ctx,
+		`
+		SELECT
+			id,
+			owner_id,
+			folder_id,
+			object_key,
+			original_name,
+			content_type,
+			size_bytes,
+			COALESCE(etag, ''),
+			created_at,
+			updated_at,
+			deleted_at
+		FROM files
+		WHERE owner_id = $1
+		  AND deleted_at IS NOT NULL
+		ORDER BY deleted_at DESC
+		`,
+		ownerID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]File, 0)
+
+	for rows.Next() {
+		var file File
+
+		if err := rows.Scan(
+			&file.ID,
+			&file.OwnerID,
+			&file.FolderID,
+			&file.ObjectKey,
+			&file.OriginalName,
+			&file.ContentType,
+			&file.SizeBytes,
+			&file.ETag,
+			&file.CreatedAt,
+			&file.UpdatedAt,
+			&file.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		result = append(result, file)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
