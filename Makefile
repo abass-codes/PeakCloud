@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down migrate-up migrate-down api web test vet lint build-web check
+.PHONY: infra-up infra-down migrate-up migrate-down api web test vet lint build-web check production-config production-build production-up production-down production-status production-logs production-smoke production-verify
 
 infra-up:
 	docker compose up -d
@@ -31,3 +31,27 @@ build-web:
 	cd apps/web && npm run build
 
 check: test vet lint build-web
+
+production-config:
+	docker compose --env-file .env.production -f docker-compose.production.yml config >/dev/null
+
+production-build:
+	docker compose --env-file .env.production -f docker-compose.production.yml build
+
+production-up:
+	docker compose --env-file .env.production -f docker-compose.production.yml up -d
+
+production-down:
+	docker compose --env-file .env.production -f docker-compose.production.yml down
+
+production-status:
+	docker compose --env-file .env.production -f docker-compose.production.yml ps
+
+production-logs:
+	docker compose --env-file .env.production -f docker-compose.production.yml logs
+
+production-smoke:
+	bash scripts/production-smoke-test.sh
+
+production-verify:
+	bash scripts/verify-production.sh
