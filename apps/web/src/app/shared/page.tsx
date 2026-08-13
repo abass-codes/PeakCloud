@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEffect, useState } from "react";
 
 import { ResourceShare, getSharedWithMe } from "@/lib/api";
@@ -44,6 +46,21 @@ export default function SharedPage() {
   return (
     <main className="min-h-screen bg-zinc-950 p-8 text-white">
       <div className="mx-auto max-w-6xl">
+        <nav className="mb-6 flex items-center gap-4 text-sm">
+          <Link
+            href="/dashboard"
+            className="text-zinc-400 hover:text-white"
+          >
+            My Drive
+          </Link>
+
+          <span className="text-zinc-700">/</span>
+
+          <span className="text-zinc-200">
+            Shared with me
+          </span>
+        </nav>
+
         <h1 className="text-3xl font-semibold">Shared with me</h1>
 
         <p className="mt-2 text-zinc-500">

@@ -457,7 +457,16 @@ export default function DriveManager() {
 
         <span className="ml-auto text-zinc-700">|</span>
 
+
         <Link
+          href="/shared"
+          className="text-zinc-400 hover:text-white"
+        >
+          Shared with me
+        </Link>
+
+
+<Link
           href="/trash"
           className="text-zinc-400 hover:text-white"
         >
