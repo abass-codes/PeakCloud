@@ -631,9 +631,38 @@ export type TrashItem = {
 };
 
 export async function getTrash() {
-  return request<{ items: TrashItem[] }>(
-    "/api/v1/trash",
-  );
+  const result = await request<{
+    files: Array<{
+      id: string;
+      name: string;
+      content_type?: string;
+      size_bytes?: number;
+      deleted_at: string;
+      created_at: string;
+      updated_at: string;
+    }>;
+    folders: Array<{
+      id: string;
+      name: string;
+      deleted_at: string;
+      created_at: string;
+      updated_at: string;
+    }>;
+  }>("/api/v1/trash");
+
+  const files: TrashItem[] = (result.files ?? []).map((file) => ({
+    ...file,
+    resource_type: "file",
+  }));
+
+  const folders: TrashItem[] = (result.folders ?? []).map((folder) => ({
+    ...folder,
+    resource_type: "folder",
+  }));
+
+  return {
+    items: [...folders, ...files],
+  };
 }
 
 export async function moveToTrash(

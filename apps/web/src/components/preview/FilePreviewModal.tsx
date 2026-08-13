@@ -11,12 +11,14 @@ type Props = {
   fileId: string | null;
   onClose: () => void;
   onDownload: (fileId: string) => void;
+  allowDownload?: boolean;
 };
 
 export default function FilePreviewModal({
   fileId,
   onClose,
   onDownload,
+  allowDownload = true,
 }: Props) {
   const [preview, setPreview] = useState<FilePreviewResponse | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
@@ -130,13 +132,15 @@ export default function FilePreviewModal({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onDownload(fileId)}
-              className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 transition hover:bg-zinc-900"
-            >
-              Download
-            </button>
+            {allowDownload && (
+              <button
+                type="button"
+                onClick={() => onDownload(fileId)}
+                className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 transition hover:bg-zinc-900"
+              >
+                Download
+              </button>
+            )}
 
             <button
               type="button"
@@ -170,13 +174,15 @@ export default function FilePreviewModal({
                 still download the original file.
               </p>
 
-              <button
-                type="button"
-                onClick={() => onDownload(fileId)}
-                className="mt-5 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-950"
-              >
-                Download file
-              </button>
+              {allowDownload && (
+                <button
+                  type="button"
+                  onClick={() => onDownload(fileId)}
+                  className="mt-5 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-950"
+                >
+                  Download file
+                </button>
+              )}
             </div>
           )}
 
