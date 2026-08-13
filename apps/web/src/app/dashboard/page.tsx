@@ -54,15 +54,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto max-w-6xl px-6 py-8">
+    <main className="flex min-h-screen items-center bg-zinc-950 text-zinc-100">
+      <div className="mx-auto w-full max-w-6xl px-6 py-8">
         <header className="flex items-center justify-between border-b border-zinc-800 pb-6">
           <div>
-            <p className="text-xs font-semibold tracking-[0.25em] text-blue-400">
+            <p className="text-3xl font-semibold tracking-[0.25em] text-blue-400">
               PEAKCLOUD
             </p>
 
-            <h1 className="mt-2 text-2xl font-semibold">
+            <h1 className="mt-3 text-2xl font-semibold tracking-[0.25em] text-zinc-100">
               Your files
             </h1>
 
