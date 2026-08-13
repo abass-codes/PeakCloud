@@ -8,6 +8,10 @@ const API_URL =
 const nextConfig: NextConfig = {
   output: "standalone",
 
+  experimental: {
+    proxyClientMaxBodySize: "100mb",
+  },
+
   async rewrites() {
     return [
       {
