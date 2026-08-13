@@ -180,11 +180,13 @@ func (r *Repository) ListOwnedShares(
 					SELECT f.original_name
 					FROM files f
 					WHERE f.id = s.resource_id
+					  AND f.deleted_at IS NULL
 				)
 				ELSE (
 					SELECT fo.name
 					FROM folders fo
 					WHERE fo.id = s.resource_id
+					  AND fo.deleted_at IS NULL
 				)
 			END,
 			s.permission,
@@ -194,6 +196,21 @@ func (r *Repository) ListOwnedShares(
 		 FROM resource_shares s
 		 JOIN users u ON u.id = s.recipient_id
 		 WHERE s.owner_id = $1
+		   AND (
+			(s.resource_type = 'file' AND EXISTS (
+				SELECT 1
+				FROM files f
+				WHERE f.id = s.resource_id
+				  AND f.deleted_at IS NULL
+			))
+			OR
+			(s.resource_type = 'folder' AND EXISTS (
+				SELECT 1
+				FROM folders fo
+				WHERE fo.id = s.resource_id
+				  AND fo.deleted_at IS NULL
+			))
+		   )
 		 ORDER BY s.created_at DESC`,
 		ownerID,
 	)
@@ -247,11 +264,13 @@ func (r *Repository) ListSharedWithMe(
 					SELECT f.original_name
 					FROM files f
 					WHERE f.id = s.resource_id
+					  AND f.deleted_at IS NULL
 				)
 				ELSE (
 					SELECT fo.name
 					FROM folders fo
 					WHERE fo.id = s.resource_id
+					  AND fo.deleted_at IS NULL
 				)
 			END,
 			s.permission,
@@ -260,6 +279,21 @@ func (r *Repository) ListSharedWithMe(
 			s.updated_at
 		 FROM resource_shares s
 		 WHERE s.recipient_id = $1
+		   AND (
+			(s.resource_type = 'file' AND EXISTS (
+				SELECT 1
+				FROM files f
+				WHERE f.id = s.resource_id
+				  AND f.deleted_at IS NULL
+			))
+			OR
+			(s.resource_type = 'folder' AND EXISTS (
+				SELECT 1
+				FROM folders fo
+				WHERE fo.id = s.resource_id
+				  AND fo.deleted_at IS NULL
+			))
+		   )
 		 ORDER BY s.created_at DESC`,
 		userID,
 	)
@@ -455,11 +489,13 @@ func (r *Repository) ListPublicLinks(
 					SELECT f.original_name
 					FROM files f
 					WHERE f.id = p.resource_id
+					  AND f.deleted_at IS NULL
 				)
 				ELSE (
 					SELECT fo.name
 					FROM folders fo
 					WHERE fo.id = p.resource_id
+					  AND fo.deleted_at IS NULL
 				)
 			END,
 			p.permission,
@@ -471,6 +507,21 @@ func (r *Repository) ListPublicLinks(
 			p.updated_at
 		 FROM public_share_links p
 		 WHERE p.owner_id = $1
+		   AND (
+			(p.resource_type = 'file' AND EXISTS (
+				SELECT 1
+				FROM files f
+				WHERE f.id = p.resource_id
+				  AND f.deleted_at IS NULL
+			))
+			OR
+			(p.resource_type = 'folder' AND EXISTS (
+				SELECT 1
+				FROM folders fo
+				WHERE fo.id = p.resource_id
+				  AND fo.deleted_at IS NULL
+			))
+		   )
 		 ORDER BY p.created_at DESC`,
 		ownerID,
 	)

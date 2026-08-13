@@ -407,7 +407,7 @@ export async function getResourceShares() {
 
 export async function getSharedWithMe() {
   const result = await request<{ shares: ResourceShare[] }>(
-    "/api/v1/shares/shared-with-me",
+    "/api/v1/shared-with-me",
   );
 
   return result.shares;
@@ -445,7 +445,7 @@ export async function createPublicShareLink(input: {
 }) {
   const result = await request<{
     link: PublicShareLink & { token: string };
-  }>("/api/v1/share-links", {
+  }>("/api/v1/public-links", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -458,14 +458,14 @@ export async function createPublicShareLink(input: {
 
 export async function getPublicShareLinks() {
   const result = await request<{ links: PublicShareLink[] }>(
-    "/api/v1/share-links",
+    "/api/v1/public-links",
   );
 
   return result.links;
 }
 
 export async function revokePublicShareLink(id: string) {
-  return request<void>(`/api/v1/share-links/${id}`, {
+  return request<void>(`/api/v1/public-links/${id}`, {
     method: "DELETE",
   });
 }
@@ -631,9 +631,38 @@ export type TrashItem = {
 };
 
 export async function getTrash() {
-  return request<{ items: TrashItem[] }>(
-    "/api/v1/trash",
-  );
+  const result = await request<{
+    files: Array<{
+      id: string;
+      name: string;
+      content_type?: string;
+      size_bytes?: number;
+      deleted_at: string;
+      created_at: string;
+      updated_at: string;
+    }>;
+    folders: Array<{
+      id: string;
+      name: string;
+      deleted_at: string;
+      created_at: string;
+      updated_at: string;
+    }>;
+  }>("/api/v1/trash");
+
+  const files: TrashItem[] = (result.files ?? []).map((file) => ({
+    ...file,
+    resource_type: "file",
+  }));
+
+  const folders: TrashItem[] = (result.folders ?? []).map((folder) => ({
+    ...folder,
+    resource_type: "folder",
+  }));
+
+  return {
+    items: [...folders, ...files],
+  };
 }
 
 export async function moveToTrash(
