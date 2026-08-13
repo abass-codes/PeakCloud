@@ -274,10 +274,7 @@ export default function DriveManager() {
     }
   }
 
-  function handleMoveFolder(
-    id: string,
-    name: string,
-  ) {
+  function handleMoveFolder(id: string, name: string) {
     setMoveTarget({
       id,
       name,
@@ -304,9 +301,7 @@ export default function DriveManager() {
       await refresh(currentFolderId);
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to move folder to trash",
+        err instanceof Error ? err.message : "Unable to move folder to trash",
       );
     }
   }
@@ -322,9 +317,7 @@ export default function DriveManager() {
       await refresh(currentFolderId);
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to move file to trash",
+        err instanceof Error ? err.message : "Unable to move file to trash",
       );
     }
   }
@@ -335,11 +328,7 @@ export default function DriveManager() {
       await copyFile(file.id, currentFolderId);
       await refresh(currentFolderId);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to copy file",
-      );
+      setError(err instanceof Error ? err.message : "Unable to copy file");
     }
   }
 
@@ -350,22 +339,14 @@ export default function DriveManager() {
       return;
     }
 
-    if (
-      !window.confirm(
-        `Move ${items.length} selected item(s) to trash?`,
-      )
-    ) {
+    if (!window.confirm(`Move ${items.length} selected item(s) to trash?`)) {
       return;
     }
 
     try {
       setError("");
 
-      await Promise.all(
-        items.map((item) =>
-          moveToTrash(item.type, item.id),
-        ),
-      );
+      await Promise.all(items.map((item) => moveToTrash(item.type, item.id)));
 
       await refresh(currentFolderId);
     } catch (err) {
@@ -433,7 +414,7 @@ export default function DriveManager() {
         </select>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2 text-sm text-zinc-400">
+      <div className="mt-6 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
         <button
           type="button"
           onClick={() => void openFolder()}
@@ -455,21 +436,13 @@ export default function DriveManager() {
           </div>
         ))}
 
-        <span className="ml-auto text-zinc-700">|</span>
-
-
-        <Link
-          href="/shared"
-          className="text-zinc-400 hover:text-white"
-        >
+        <Link href="/shared" className="ml-auto text-zinc-500 hover:text-white">
           Shared with me
         </Link>
 
+        <span className="text-zinc-700">|</span>
 
-<Link
-          href="/trash"
-          className="text-zinc-400 hover:text-white"
-        >
+        <Link href="/trash" className="text-zinc-500 hover:text-white">
           Trash
         </Link>
       </div>
@@ -481,7 +454,7 @@ export default function DriveManager() {
           <button
             type="button"
             onClick={() => void handleBulkDownload()}
-            className="text-sm text-zinc-300 hover:text-white"
+            className="text-sm text-zinc-500 hover:text-white"
           >
             Download files
           </button>
@@ -553,7 +526,7 @@ export default function DriveManager() {
                   </button>
 
                   <span className="text-zinc-500">Folder</span>
-                  <span className="text-zinc-600">—</span>
+                  <span className="text-zinc-500">—</span>
 
                   <div className="flex flex-wrap gap-x-4 gap-y-2">
                     <button
@@ -565,7 +538,7 @@ export default function DriveManager() {
                           type: "folder",
                         })
                       }
-                      className="text-zinc-400 hover:text-white"
+                      className="text-zinc-500 hover:text-white"
                     >
                       Share
                     </button>
@@ -575,7 +548,7 @@ export default function DriveManager() {
                       onClick={() =>
                         void handleRenameFolder(folder.id, folder.name)
                       }
-                      className="text-zinc-400 hover:text-white"
+                      className="text-zinc-500 hover:text-white"
                     >
                       Rename
                     </button>
@@ -583,7 +556,7 @@ export default function DriveManager() {
                     <button
                       type="button"
                       onClick={() => handleMoveFolder(folder.id, folder.name)}
-                      className="text-zinc-400 hover:text-white"
+                      className="text-zinc-500 hover:text-white"
                     >
                       Move
                     </button>
@@ -640,7 +613,7 @@ export default function DriveManager() {
                           type: "file",
                         })
                       }
-                      className="text-zinc-400 hover:text-white"
+                      className="text-zinc-500 hover:text-white"
                     >
                       Share
                     </button>
@@ -653,7 +626,7 @@ export default function DriveManager() {
                           name: file.name,
                         })
                       }
-                      className="text-zinc-400 hover:text-white"
+                      className="text-zinc-500 hover:text-white"
                     >
                       Versions
                     </button>
@@ -661,7 +634,7 @@ export default function DriveManager() {
                     <button
                       type="button"
                       onClick={() => void downloadFile(file.id, file.name)}
-                      className="text-zinc-400 hover:text-white"
+                      className="text-zinc-500 hover:text-white"
                     >
                       Download
                     </button>
@@ -669,7 +642,7 @@ export default function DriveManager() {
                     <button
                       type="button"
                       onClick={() => void handleRenameFile(file)}
-                      className="text-zinc-400 hover:text-white"
+                      className="text-zinc-500 hover:text-white"
                     >
                       Rename
                     </button>
@@ -677,7 +650,7 @@ export default function DriveManager() {
                     <button
                       type="button"
                       onClick={() => handleMoveFile(file)}
-                      className="text-zinc-400 hover:text-white"
+                      className="text-zinc-500 hover:text-white"
                     >
                       Move
                     </button>
@@ -685,7 +658,7 @@ export default function DriveManager() {
                     <button
                       type="button"
                       onClick={() => void handleCopy(file)}
-                      className="text-zinc-400 hover:text-white"
+                      className="text-zinc-500 hover:text-white"
                     >
                       Copy
                     </button>
@@ -713,15 +686,9 @@ export default function DriveManager() {
           onClose={() => setMoveTarget(null)}
           onMove={async (destinationFolderId) => {
             if (moveTarget.type === "folder") {
-              await moveFolder(
-                moveTarget.id,
-                destinationFolderId,
-              );
+              await moveFolder(moveTarget.id, destinationFolderId);
             } else {
-              await moveFile(
-                moveTarget.id,
-                destinationFolderId,
-              );
+              await moveFile(moveTarget.id, destinationFolderId);
             }
 
             await refresh(currentFolderId);
