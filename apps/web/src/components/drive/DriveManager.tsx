@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import FilePreviewModal from "@/components/preview/FilePreviewModal";
+import MoveModal from "@/components/drive/MoveModal";
 import VersionHistoryModal from "@/components/versions/VersionHistoryModal";
 import ShareModal from "@/components/sharing/ShareModal";
 
@@ -24,6 +25,8 @@ import {
   createFolder,
   downloadFile,
   getDrive,
+  moveFile,
+  moveFolder,
   moveToTrash,
   renameFile,
   renameFolder,
@@ -69,6 +72,12 @@ export default function DriveManager() {
   const [versionTarget, setVersionTarget] = useState<{
     id: string;
     name: string;
+  } | null>(null);
+
+  const [moveTarget, setMoveTarget] = useState<{
+    id: string;
+    name: string;
+    type: "file" | "folder";
   } | null>(null);
 
   const refresh = useCallback(async (folderId?: string) => {
@@ -263,6 +272,25 @@ export default function DriveManager() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to rename file");
     }
+  }
+
+  function handleMoveFolder(
+    id: string,
+    name: string,
+  ) {
+    setMoveTarget({
+      id,
+      name,
+      type: "folder",
+    });
+  }
+
+  function handleMoveFile(file: StoredFile) {
+    setMoveTarget({
+      id: file.id,
+      name: file.name,
+      type: "file",
+    });
   }
 
   async function handleTrashFolder(id: string) {
@@ -518,7 +546,7 @@ export default function DriveManager() {
                   <span className="text-zinc-500">Folder</span>
                   <span className="text-zinc-600">—</span>
 
-                  <div className="flex gap-4">
+                  <div className="flex flex-wrap gap-x-4 gap-y-2">
                     <button
                       type="button"
                       onClick={() =>
@@ -541,6 +569,14 @@ export default function DriveManager() {
                       className="text-zinc-400 hover:text-white"
                     >
                       Rename
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleMoveFolder(folder.id, folder.name)}
+                      className="text-zinc-400 hover:text-white"
+                    >
+                      Move
                     </button>
 
                     <button
@@ -585,7 +621,7 @@ export default function DriveManager() {
                     {formatBytes(file.size_bytes)}
                   </span>
 
-                  <div className="flex gap-4">
+                  <div className="flex flex-wrap gap-x-4 gap-y-2">
                     <button
                       type="button"
                       onClick={() =>
@@ -631,6 +667,14 @@ export default function DriveManager() {
 
                     <button
                       type="button"
+                      onClick={() => handleMoveFile(file)}
+                      className="text-zinc-400 hover:text-white"
+                    >
+                      Move
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => void handleCopy(file)}
                       className="text-zinc-400 hover:text-white"
                     >
@@ -651,6 +695,30 @@ export default function DriveManager() {
           </>
         )}
       </div>
+
+      {moveTarget && (
+        <MoveModal
+          resourceId={moveTarget.id}
+          resourceName={moveTarget.name}
+          resourceType={moveTarget.type}
+          onClose={() => setMoveTarget(null)}
+          onMove={async (destinationFolderId) => {
+            if (moveTarget.type === "folder") {
+              await moveFolder(
+                moveTarget.id,
+                destinationFolderId,
+              );
+            } else {
+              await moveFile(
+                moveTarget.id,
+                destinationFolderId,
+              );
+            }
+
+            await refresh(currentFolderId);
+          }}
+        />
+      )}
 
       <FilePreviewModal
         fileId={previewFileId}

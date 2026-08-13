@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/abass-codes/peakcloud/internal/auth"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,14 +19,16 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) List(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	user, ok := auth.UserFromContext(c)
+	if !ok {
 		c.JSON(
 			http.StatusUnauthorized,
 			gin.H{"error": "unauthorized"},
 		)
 		return
 	}
+
+	userID := user.ID
 
 	contents, err := h.service.List(
 		c.Request.Context(),
@@ -43,14 +46,16 @@ func (h *Handler) List(c *gin.Context) {
 }
 
 func (h *Handler) Trash(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	user, ok := auth.UserFromContext(c)
+	if !ok {
 		c.JSON(
 			http.StatusUnauthorized,
 			gin.H{"error": "unauthorized"},
 		)
 		return
 	}
+
+	userID := user.ID
 
 	resourceType := ResourceType(
 		c.Param("type"),
@@ -76,14 +81,16 @@ func (h *Handler) Trash(c *gin.Context) {
 }
 
 func (h *Handler) Restore(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	user, ok := auth.UserFromContext(c)
+	if !ok {
 		c.JSON(
 			http.StatusUnauthorized,
 			gin.H{"error": "unauthorized"},
 		)
 		return
 	}
+
+	userID := user.ID
 
 	resourceType := ResourceType(
 		c.Param("type"),
@@ -109,14 +116,16 @@ func (h *Handler) Restore(c *gin.Context) {
 }
 
 func (h *Handler) DeletePermanently(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	user, ok := auth.UserFromContext(c)
+	if !ok {
 		c.JSON(
 			http.StatusUnauthorized,
 			gin.H{"error": "unauthorized"},
 		)
 		return
 	}
+
+	userID := user.ID
 
 	resourceType := ResourceType(
 		c.Param("type"),

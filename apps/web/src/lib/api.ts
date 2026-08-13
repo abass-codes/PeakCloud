@@ -407,7 +407,7 @@ export async function getResourceShares() {
 
 export async function getSharedWithMe() {
   const result = await request<{ shares: ResourceShare[] }>(
-    "/api/v1/shares/shared-with-me",
+    "/api/v1/shared-with-me",
   );
 
   return result.shares;
@@ -445,7 +445,7 @@ export async function createPublicShareLink(input: {
 }) {
   const result = await request<{
     link: PublicShareLink & { token: string };
-  }>("/api/v1/share-links", {
+  }>("/api/v1/public-links", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -458,14 +458,14 @@ export async function createPublicShareLink(input: {
 
 export async function getPublicShareLinks() {
   const result = await request<{ links: PublicShareLink[] }>(
-    "/api/v1/share-links",
+    "/api/v1/public-links",
   );
 
   return result.links;
 }
 
 export async function revokePublicShareLink(id: string) {
-  return request<void>(`/api/v1/share-links/${id}`, {
+  return request<void>(`/api/v1/public-links/${id}`, {
     method: "DELETE",
   });
 }
