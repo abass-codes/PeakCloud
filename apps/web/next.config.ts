@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/backend/:path*",
-        destination: `${API_URL}/api/v1/:path*`,
+        destination: `${API_URL}/:path*`,
       },
     ];
   },
