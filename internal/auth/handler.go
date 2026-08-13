@@ -130,7 +130,7 @@ func (h *Handler) Logout(c *gin.Context) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   h.secure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: h.sameSiteMode(),
 	})
 
 	c.Status(http.StatusNoContent)
@@ -153,6 +153,14 @@ func (h *Handler) Me(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
+func (h *Handler) sameSiteMode() http.SameSite {
+	if h.secure {
+		return http.SameSiteNoneMode
+	}
+
+	return http.SameSiteLaxMode
+}
+
 func (h *Handler) setSessionCookie(c *gin.Context, token string) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     h.cookieName,
@@ -161,6 +169,6 @@ func (h *Handler) setSessionCookie(c *gin.Context, token string) {
 		MaxAge:   int(h.sessionTTL.Seconds()),
 		HttpOnly: true,
 		Secure:   h.secure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: h.sameSiteMode(),
 	})
 }
